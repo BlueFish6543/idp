@@ -1,0 +1,12 @@
+# IDEs and editors
+/.idea
+.vscode/*
+
+# Mac
+*.DS_Store
+
+# Windows
+Thumbs.db
+
+# LibreOffice locks
+.~lock.*#
