@@ -1,4 +1,4 @@
-# IDP Group 8
+# IDP
 
 > Code and relevant data files for IDP.
 
