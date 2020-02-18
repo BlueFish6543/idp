@@ -87,6 +87,7 @@ class Robot {
       switch (state) {
         case START_TO_TUNNEL:
           numIgnores = 2;
+          // first ignore for the start box, and second ignore for the junction when the tracks merge
           break;
         // to be added on
       }
