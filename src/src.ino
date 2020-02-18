@@ -1,6 +1,3 @@
-#define MAX_SERVO_ANGLE 0 // to be replaced
-#define DISTANCE_THRESHOLD 0 // to be replaced
-
 int LEFT_SENSOR; // to be replaced
 int RIGHT_SENSOR; // to be replaced
 int IR_SENSOR; // to be replaced
@@ -22,6 +19,13 @@ class Robot {
       RETURN_TO_TUNNEL // got a robot and returning to tunnel
     };
 
+    // Constants
+    static const int MAX_SERVO_ANGLE; // to be changed
+    static const int DISTANCE_THRESHOLD; // to be changed
+    static const int NO_IR_SIGNAL_FOUND; // to be changed
+    static const int MOVE_FORWARD_CALIBRATION_CONSTANT; // to be changed
+    static const int TURN_CALIBRATION_CONSTANT; // to be changed
+
     State state; // current state of the robot
     Pose pose; // current pose of the robot
     int distanceToObjectInFront;
@@ -32,25 +36,44 @@ class Robot {
     int servoAngle; // to be replaced
     int servoSweepDirection;
 
-    // TODO: updatePose()
+    void updatePoseForward() {
+      pose.x += MOVE_FORWARD_CALIBRATION_CONSTANT * cos(pose.theta);
+      pose.y += MOVE_FORWARD_CALIBRATION_CONSTANT * sin(pose.theta);
+    }
+
+    void updatePoseTurn() {
+      pose.theta += TURN_CALIBRATION_CONSTANT;
+    }
 
     void goForward() {
+      // goes forward indefinitely
       // to be implemented
     }
 
+    void moveForward() {
+      // moves robot forward by a single step
+      // to be implemented
+      updatePoseForward();
+    }
+
     void turnLeft() {
+      // turns robot left by a single step
       // to be implemented
     }
 
     void turnRight() {
+      // turns robot right by a single step
       // to be implemented
     }
 
     void turnByAngle(int angle) {
+      // turns robot by set angle, angle can be positive or negative
       // to be implemented
+      updatePoseTurn();
     }
 
     void stopMoving() {
+      // stops robot
       // to be implemented
     }
 
@@ -73,11 +96,8 @@ class Robot {
       /* The following while loop is meant to handle the junctions by ignoring a set number
        *  of instances where both sensors return high.
        */
-
       while (counter <= numIgnores) {
-        
         while (!LEFT_SENSOR || !RIGHT_SENSOR) {
-          
           if (LEFT_SENSOR) {
             turnLeft();
             goForward();
@@ -99,7 +119,6 @@ class Robot {
         if (!prevLeftSensor || !prevRightSensor) {
           counter++;
         }
-        
       }
 
       // Note: may need different logic to handle when to stop depending on the state
@@ -119,19 +138,38 @@ class Robot {
       // update servoAngle
     }
 
-    void scanIR() {
+    int scanIR() {
+      /* Returns the angle relative to the robot's heading if an IR signal is found,
+       *  otherwise returns NO_IR_SIGNAL_FOUND.
+       */
       sweepServo();
       if (IR_SENSOR) {
-        turnByAngle(servoAngle);
-        goForward();
+        return servoAngle;
+      } else {
+        return NO_IR_SIGNAL_FOUND;
       }
     }
 
     void findRobot() {
       while (distanceToObjectInFront > DISTANCE_THRESHOLD) { 
-        scanIR();
+        int signalDirection = scanIR();
+        if (signalDirection != NO_IR_SIGNAL_FOUND) {
+          turnByAngle(servoAngle);
+        }
+        moveForward();
+
+        /* Needs additional logic to determine whether robot needs serving or
+         *  recharging, and also might need to confirm that distanceToObjectInFront
+         *  is indeed decreasing.
+         */
       }
     }
+
+    /* TODO:
+     *  Make LEDs light up
+     *  Predetermined route for robot
+     *  OpenCV
+     */
 };
 
 void setup() {
