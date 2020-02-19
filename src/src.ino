@@ -30,11 +30,13 @@ class Robot {
     Pose pose; // current pose of the robot
     int distanceToObjectInFront;
 
-    int prevLeftSensor;
-    int prevRightSensor;
+    int prevLeftSensor = 0;
+    int prevRightSensor = 0;
 
     int servoAngle; // to be replaced
     int servoSweepDirection;
+
+    bool allServicingRobotsCollected = false;
 
     void updatePoseForward() {
       pose.x += MOVE_FORWARD_CALIBRATION_CONSTANT * cos(pose.theta);
@@ -151,19 +153,38 @@ class Robot {
       }
     }
 
+    bool requiresServicing() {
+      // to be implemented
+    }
+
+    void lightUpLED() {
+      // to be implemented
+    }
+
     void findRobot() {
       while (distanceToObjectInFront > DISTANCE_THRESHOLD) { 
         int signalDirection = scanIR();
-        if (signalDirection != NO_IR_SIGNAL_FOUND) {
+        if ((signalDirection != NO_IR_SIGNAL_FOUND) && (requiresServicing() || allServicingRobotsCollected)) {
           turnByAngle(servoAngle);
         }
         moveForward();
 
-        /* Needs additional logic to determine whether robot needs serving or
-         *  recharging, and also might need to confirm that distanceToObjectInFront
+        /* Might need to confirm that distanceToObjectInFront
          *  is indeed decreasing.
          */
       }
+
+      // Target should be in front of robot at this point
+      lightUpLED();
+      collectRobot();
+    }
+
+    void collectRobot() {
+      // to be implemented
+    }
+
+    void goBackToTunnel() {
+      // to be implemented
     }
 
     /* TODO:
