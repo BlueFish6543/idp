@@ -23,8 +23,8 @@ class Robot {
     // Constants
     static const int NORMAL_MOTOR_SPEED = 75; // to be changed
     static const int TURN_DELAY = 100; // to be changed
-    static const int LINE_DETECTION_THRESHOLD_LOW = 500; // to be changed
-    static const int LINE_DETECTION_THRESHOLD_HIGH = 700; // to be changed
+    static const int LEFT_THRESHOLD = 150; // to be changed
+    static const int RIGHT_THRESHOLD = 300; // to be changed
 
     State state; // current state of the robot
 
@@ -63,17 +63,17 @@ class Robot {
 
     bool leftDetectorOnLine() {
       if (!prevLeftSensor) {
-        return analogRead(leftLineDetectorPin) > LINE_DETECTION_THRESHOLD_HIGH;
+        return analogRead(leftLineDetectorPin) > LEFT_THRESHOLD;
       } else {
-        return analogRead(leftLineDetectorPin) > LINE_DETECTION_THRESHOLD_LOW;
+        return analogRead(leftLineDetectorPin) > LEFT_THRESHOLD;
       }
     }
 
     bool rightDetectorOnLine() {
       if (!prevRightSensor) {
-        return analogRead(rightLineDetectorPin) > LINE_DETECTION_THRESHOLD_HIGH;
+        return analogRead(rightLineDetectorPin) > RIGHT_THRESHOLD;
       } else {
-        return analogRead(rightLineDetectorPin) > LINE_DETECTION_THRESHOLD_LOW;
+        return analogRead(rightLineDetectorPin) > RIGHT_THRESHOLD;
       }
     }
 

@@ -1,5 +1,14 @@
-int LEFT_SENSOR; // to be replaced
-int RIGHT_SENSOR; // to be replaced
+#include <Wire.h>
+#include <Adafruit_MotorShield.h>
+#include "utility/Adafruit_MS_PWMServoDriver.h"
+
+Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
+Adafruit_DCMotor *leftMotor = AFMS.getMotor(1);
+Adafruit_DCMotor *rightMotor = AFMS.getMotor(2);
+
+int leftLineDetectorPin = A2; // to be changed
+int rightLineDetectorPin = A1; // to be changed
+
 int IR_SENSOR; // to be replaced
 
 typedef struct {
@@ -26,6 +35,12 @@ class Robot {
     static const int MOVE_FORWARD_CALIBRATION_CONSTANT; // to be changed
     static const int TURN_CALIBRATION_CONSTANT; // to be changed
 
+    // Constants
+    static const int NORMAL_MOTOR_SPEED = 75; // to be changed
+    static const int TURN_DELAY = 100; // to be changed
+    static const int LEFT_THRESHOLD = 150; // to be changed
+    static const int RIGHT_THRESHOLD = 300; // to be changed
+
     State state; // current state of the robot
     Pose pose; // current pose of the robot
     int distanceToObjectInFront;
@@ -48,8 +63,10 @@ class Robot {
     }
 
     void goForward() {
-      // goes forward indefinitely
-      // to be implemented
+      leftMotor->setSpeed(NORMAL_MOTOR_SPEED);
+      leftMotor->run(FORWARD);
+      rightMotor->setSpeed(NORMAL_MOTOR_SPEED);
+      rightMotor->run(FORWARD);
     }
 
     void moveForward() {
@@ -59,13 +76,26 @@ class Robot {
     }
 
     void turnLeft() {
-      // turns robot left by a single step
-      // to be implemented
+      leftMotor->setSpeed(0);
+      leftMotor->run(RELEASE);
+      rightMotor->setSpeed(NORMAL_MOTOR_SPEED);
+      rightMotor->run(FORWARD);
+      delay(TURN_DELAY);
     }
 
     void turnRight() {
-      // turns robot right by a single step
-      // to be implemented
+      leftMotor->setSpeed(NORMAL_MOTOR_SPEED);
+      leftMotor->run(FORWARD);
+      rightMotor->setSpeed(0);
+      rightMotor->run(RELEASE);
+      delay(TURN_DELAY);
+    }
+    
+    void stopMoving() {
+      leftMotor->setSpeed(0);
+      leftMotor->run(RELEASE);
+      rightMotor->setSpeed(0);
+      rightMotor->run(RELEASE);
     }
 
     void turnByAngle(int angle) {
@@ -74,17 +104,28 @@ class Robot {
       updatePoseTurn();
     }
 
-    void stopMoving() {
-      // stops robot
-      // to be implemented
+    bool leftDetectorOnLine() {
+      if (!prevLeftSensor) {
+        return analogRead(leftLineDetectorPin) > LEFT_THRESHOLD;
+      } else {
+        return analogRead(leftLineDetectorPin) > LEFT_THRESHOLD;
+      }
+    }
+
+    bool rightDetectorOnLine() {
+      if (!prevRightSensor) {
+        return analogRead(rightLineDetectorPin) > RIGHT_THRESHOLD;
+      } else {
+        return analogRead(rightLineDetectorPin) > RIGHT_THRESHOLD;
+      }
     }
 
     void followLine() {
       /* This function should handle the entire line following process from start to finish. */
       int numIgnores;
       int counter = 0;
-      prevLeftSensor = 0;
-      prevRightSensor = 0;
+      prevLeftSensor = false;
+      prevRightSensor = false;
 
       switch (state) {
         case START_TO_TUNNEL:
@@ -100,26 +141,30 @@ class Robot {
        *  of instances where both sensors return high.
        */
       while (counter <= numIgnores) {
-        while (!LEFT_SENSOR || !RIGHT_SENSOR) {
-          if (LEFT_SENSOR) {
+        while (!leftDetectorOnLine() || !rightDetectorOnLine()) {          
+          if (leftDetectorOnLine()) {
             turnLeft();
             goForward();
-            prevLeftSensor = 1;
+            prevLeftSensor = true;
+            prevRightSensor = false;
             continue;
           }
           
-          if (RIGHT_SENSOR) {
+          if (rightDetectorOnLine()) {
             turnRight();
             goForward();
-            prevRightSensor = 1;
+            prevLeftSensor = false;
+            prevRightSensor = true;
             continue;
           }
           
-          prevLeftSensor = 0;
-          prevRightSensor = 0;
+          prevLeftSensor = false;
+          prevRightSensor = false;
         }
 
         if (!prevLeftSensor || !prevRightSensor) {
+          prevLeftSensor = true;
+          prevRightSensor = true;
           counter++;
         }
       }
@@ -191,10 +236,13 @@ class Robot {
      *  Make LEDs light up
      *  Predetermined route for robot
      *  OpenCV
+     *  More robust line tracking algorithm (threshold)
+     *  IR detector servo
      */
 };
 
 void setup() {
+  AFMS.begin();
   Serial.begin(9600);
 }
 
