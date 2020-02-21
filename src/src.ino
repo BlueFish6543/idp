@@ -34,12 +34,11 @@ class Robot {
     static const int NO_IR_SIGNAL_FOUND; // to be changed
     static const int MOVE_FORWARD_CALIBRATION_CONSTANT; // to be changed
     static const int TURN_CALIBRATION_CONSTANT; // to be changed
-
-    // Constants
     static const int NORMAL_MOTOR_SPEED = 75; // to be changed
     static const int TURN_DELAY = 100; // to be changed
-    static const int LEFT_THRESHOLD = 150; // to be changed
-    static const int RIGHT_THRESHOLD = 300; // to be changed
+    int LEFT_THRESHOLD = 150; // to be changed
+    int RIGHT_THRESHOLD = 300; // to be changed
+    static const int ADAPTIVE_THRESHOLD_OFFSET = 150; // to be changed
 
     State state; // current state of the robot
     Pose pose; // current pose of the robot
@@ -120,6 +119,16 @@ class Robot {
       }
     }
 
+    void adaptLeftLineThreshold() {
+      int current = analogRead(leftLineDetectorPin);
+      LEFT_THRESHOLD = current + ADAPTIVE_THRESHOLD_OFFSET;
+    }
+
+    void adaptRightLineThreshold() {
+      int current = analogRead(rightLineDetectorPin);
+      RIGHT_THRESHOLD = current + ADAPTIVE_THRESHOLD_OFFSET;
+    }
+
     void followLine() {
       /* This function should handle the entire line following process from start to finish. */
       int numIgnores;
@@ -134,7 +143,9 @@ class Robot {
           break;
         // to be added on
       }
-      
+
+//      adaptLeftLineThreshold();
+//      adaptRightLinethreshold();
       goForward();
 
       /* The following while loop is meant to handle the junctions by ignoring a set number
@@ -237,7 +248,8 @@ class Robot {
      *  Predetermined route for robot
      *  OpenCV
      *  More robust line tracking algorithm (threshold)
-     *  IR detector servo
+     *  Servo code
+     *  IR signal detector
      */
 };
 
