@@ -230,6 +230,12 @@ class Robot {
       /* Returns the angle relative to the robot's heading if an IR signal is found,
        *  otherwise returns NO_IR_SIGNAL_FOUND.
        */
+      bool signalDetected = false;
+      for (int i = 0; i < MAX_SERVO_ANGLE / SERVO_ROTATION_STEP; i++) {
+        signalDetected = signalDetected || IRSignalDetected();
+      }
+      // TODO
+      
       sweepServo();
       bool signalDetected = IRSignalDetected();
       if (IRSignalDetected()) {
@@ -247,18 +253,20 @@ class Robot {
       // to be implemented
     }
 
-    void findRobot() {
-      while (distanceToObjectInFront > DISTANCE_THRESHOLD) { 
-        int signalDirection = scanIR();
-        if ((signalDirection != NO_IR_SIGNAL_FOUND) && (requiresServicing() || allServicingRobotsCollected)) {
-          turnByAngle(servoAngle);
-        }
-        moveForward();
+    void locateRobot() {
+      
+    }
 
-        /* Might need to confirm that distanceToObjectInFront
-         *  is indeed decreasing.
-         */
+    void findRobot() {
+      int signalDirection = NO_IR_SIGNAL_FOUND;
+      
+      while (signalDirection == NO_IR_SIGNAL_FOUND || (!requiresServicing() && !allServicingRobotsCollected) { 
+        signalDirection = scanIR();
       }
+
+      // IR receiver should have found robot here
+      turnByAngle(servoAngle);
+      
 
       // Target should be in front of robot at this point
       lightUpLED();
