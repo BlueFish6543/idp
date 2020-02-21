@@ -1,15 +1,18 @@
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
 #include "utility/Adafruit_MS_PWMServoDriver.h"
+#include <Servo.h>
 
 Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
 Adafruit_DCMotor *leftMotor = AFMS.getMotor(1);
 Adafruit_DCMotor *rightMotor = AFMS.getMotor(2);
 
+Servo servo;
+
 int leftLineDetectorPin = A2; // to be changed
 int rightLineDetectorPin = A1; // to be changed
-
-int IR_SENSOR; // to be replaced
+int servoPin; // to be changed
+int IRPhototransistorPin; // to be changed
 
 typedef struct {
   int x;
@@ -31,14 +34,18 @@ class Robot {
     // Constants
     static const int MAX_SERVO_ANGLE; // to be changed
     static const int DISTANCE_THRESHOLD; // to be changed
-    static const int NO_IR_SIGNAL_FOUND; // to be changed
+    static const int NO_IR_SIGNAL_FOUND = -1000; // to be changed
     static const int MOVE_FORWARD_CALIBRATION_CONSTANT; // to be changed
     static const int TURN_CALIBRATION_CONSTANT; // to be changed
     static const int NORMAL_MOTOR_SPEED = 75; // to be changed
     static const int TURN_DELAY = 100; // to be changed
+    static const int IR_SCAN_DELAY = 10; // to be changed
     int LEFT_THRESHOLD = 150; // to be changed
     int RIGHT_THRESHOLD = 300; // to be changed
     static const int ADAPTIVE_THRESHOLD_OFFSET = 150; // to be changed
+    static const int SERVO_ROTATION_STEP = 5; // to be changed
+    static const int IR_SCAN_WINDOW_LENGTH = 30; // to be changed
+    static const int IR_PEAK_THRESHOLD; // to be changed
 
     State state; // current state of the robot
     Pose pose; // current pose of the robot
@@ -47,8 +54,8 @@ class Robot {
     int prevLeftSensor = 0;
     int prevRightSensor = 0;
 
-    int servoAngle; // to be replaced
-    int servoSweepDirection;
+    int servoAngle = 0;
+    int servoSweepDirection = SERVO_ROTATION_STEP;
 
     bool allServicingRobotsCollected = false;
 
@@ -186,15 +193,37 @@ class Robot {
     }
 
     void moveServo() {
-      // to be implemented
+      servoAngle = servoAngle + servoSweepDirection;
+      servo.write(servoAngle);
     }
 
     void sweepServo() {
-      if (servoAngle == MAX_SERVO_ANGLE) {
-        // change servoSweepDirection
+      if (abs(servoAngle) == MAX_SERVO_ANGLE) {
+        servoSweepDirection *= -1;
       }
       moveServo();
-      // update servoAngle
+    }
+
+    bool IRSignalDetected() {
+      /* Current method of implementation:
+       *  If a robot is present, the IR receiver gives downward peaks.
+       *  We observe a window of time, and say that there is a peak if the difference in
+       *  value between adjacent readings is greater than IR_PEAK_THRESHOLD.
+       *  Note that program will pause while the receiver is monitoring input.
+       */
+      int prevValue, currValue;
+      for (int i = 0; i < IR_SCAN_WINDOW_LENGTH; i++) {
+        currValue = analogRead(IRPhototransistorPin);
+        if (i == 0) {
+          prevValue = currValue;
+          continue; 
+        }
+        if (abs(currValue - prevValue) > IR_PEAK_THRESHOLD) {
+          return true;
+        }
+        prevValue = currValue;
+      }
+      return false;
     }
 
     int scanIR() {
@@ -202,7 +231,8 @@ class Robot {
        *  otherwise returns NO_IR_SIGNAL_FOUND.
        */
       sweepServo();
-      if (IR_SENSOR) {
+      bool signalDetected = IRSignalDetected();
+      if (IRSignalDetected()) {
         return servoAngle;
       } else {
         return NO_IR_SIGNAL_FOUND;
@@ -255,6 +285,7 @@ class Robot {
 
 void setup() {
   AFMS.begin();
+  servo.attach(servoPin);
   Serial.begin(9600);
 }
 
