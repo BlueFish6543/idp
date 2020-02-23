@@ -46,10 +46,11 @@ class Robot {
     static const int SERVO_ROTATION_STEP = 5; // to be changed
     static const int IR_SCAN_WINDOW_LENGTH = 30; // to be changed
     static const int IR_PEAK_THRESHOLD; // to be changed
-
+    static const int DEFAULT_MOVE_FORWARD_DURATION; // to be changed
+    
     State state; // current state of the robot
     Pose pose; // current pose of the robot
-    int distanceToObjectInFront;
+    int distanceToObjectInFront; // may need to use an interrupt for this
 
     int prevLeftSensor = 0;
     int prevRightSensor = 0;
@@ -59,9 +60,9 @@ class Robot {
 
     bool allServicingRobotsCollected = false;
 
-    void updatePoseForward() {
-      pose.x += MOVE_FORWARD_CALIBRATION_CONSTANT * cos(pose.theta);
-      pose.y += MOVE_FORWARD_CALIBRATION_CONSTANT * sin(pose.theta);
+    void updatePoseForward(int duration) {
+      pose.x += MOVE_FORWARD_CALIBRATION_CONSTANT * duration * cos(pose.theta);
+      pose.y += MOVE_FORWARD_CALIBRATION_CONSTANT * duration * sin(pose.theta);
     }
 
     void updatePoseTurn() {
@@ -75,10 +76,21 @@ class Robot {
       rightMotor->run(FORWARD);
     }
 
-    void moveForward() {
-      // moves robot forward by a single step
-      // to be implemented
-      updatePoseForward();
+    void moveForward(int duration) {
+      // duration in seconds
+      leftMotor->setSpeed(NORMAL_MOTOR_SPEED);
+      leftMotor->run(FORWARD);
+      rightMotor->setSpeed(NORMAL_MOTOR_SPEED);
+      rightMotor->run(FORWARD);
+      
+      int counter = 0;
+      while ((distanceToObjectInFront > DISTANCE_THRESHOLD) && (counter < duration * 10)) {
+        // robot will stop if it detects object in front
+        delay(100);
+        counter++;
+      }
+      stopMoving();
+      updatePoseForward(duration);
     }
 
     void turnLeft() {
@@ -213,6 +225,7 @@ class Robot {
        */
       int prevValue, currValue;
       for (int i = 0; i < IR_SCAN_WINDOW_LENGTH; i++) {
+        delay(IR_SCAN_DELAY);
         currValue = analogRead(IRPhototransistorPin);
         if (i == 0) {
           prevValue = currValue;
@@ -230,19 +243,15 @@ class Robot {
       /* Returns the angle relative to the robot's heading if an IR signal is found,
        *  otherwise returns NO_IR_SIGNAL_FOUND.
        */
-      bool signalDetected = false;
+      bool signalDetected;
       for (int i = 0; i < MAX_SERVO_ANGLE / SERVO_ROTATION_STEP; i++) {
-        signalDetected = signalDetected || IRSignalDetected();
+        sweepServo();
+        signalDetected = IRSignalDetected();
+        if (signalDetected) {
+          return servoAngle;
+        }
       }
-      // TODO
-      
-      sweepServo();
-      bool signalDetected = IRSignalDetected();
-      if (IRSignalDetected()) {
-        return servoAngle;
-      } else {
-        return NO_IR_SIGNAL_FOUND;
-      }
+      return NO_IR_SIGNAL_FOUND;
     }
 
     bool requiresServicing() {
@@ -253,21 +262,30 @@ class Robot {
       // to be implemented
     }
 
-    void locateRobot() {
-      
+    void moveRobotToNextLocation() {
+      // to be implemented
     }
 
-    void findRobot() {
-      int signalDirection = NO_IR_SIGNAL_FOUND;
+    void locateRobot() {
+      /* Locates target robot and turns towards it. */
+      servoAngle = 0; // reset every time we call it
+      int signalDirection == scanIR();
       
-      while (signalDirection == NO_IR_SIGNAL_FOUND || (!requiresServicing() && !allServicingRobotsCollected) { 
+      while (signalDirection == NO_IR_SIGNAL_FOUND || (!requiresServicing() && !allServicingRobotsCollected) {
+        moveRobotToNextLocation();
         signalDirection = scanIR();
       }
 
-      // IR receiver should have found robot here
+      // Signal has been found
       turnByAngle(servoAngle);
-      
+    }
 
+    void findRobot() {
+      while (distanceToObjectInFront > DISTANCE_THRESHOLD) {
+        locateRobot();
+        moveForward(DEFAULT_MOVE_FORWARD_DURATION);
+      }
+      
       // Target should be in front of robot at this point
       lightUpLED();
       collectRobot();
@@ -285,9 +303,6 @@ class Robot {
      *  Make LEDs light up
      *  Predetermined route for robot
      *  OpenCV
-     *  More robust line tracking algorithm (threshold)
-     *  Servo code
-     *  IR signal detector
      */
 };
 
