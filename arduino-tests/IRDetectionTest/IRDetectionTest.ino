@@ -33,7 +33,7 @@ class Robot {
 
     // Constants
     static const int MAX_SERVO_ANGLE = 180; // to be changed
-    static const int DISTANCE_THRESHOLD; // to be changed
+    static const int DISTANCE_THRESHOLD = 10; // to be changed
     static const int NO_IR_SIGNAL_FOUND = -1000; // to be changed
     static const int MOVE_FORWARD_CALIBRATION_CONSTANT; // to be changed
     static const int TURN_CALIBRATION_CONSTANT; // to be changed
@@ -51,7 +51,7 @@ class Robot {
     
     State state; // current state of t        he robot
     Pose pose; // current pose of the robot
-    int distanceToObjectInFront; // may need to use an interrupt for this
+    int distanceToObjectInFront = 1000; // may need to use an interrupt for this
 
     int prevLeftSensor = 0;
     int prevRightSensor = 0;
@@ -123,88 +123,6 @@ class Robot {
       updatePoseTurn();
     }
 
-    bool leftDetectorOnLine() {
-      if (!prevLeftSensor) {
-        return analogRead(leftLineDetectorPin) > LEFT_THRESHOLD;
-      } else {
-        return analogRead(leftLineDetectorPin) > LEFT_THRESHOLD;
-      }
-    }
-
-    bool rightDetectorOnLine() {
-      if (!prevRightSensor) {
-        return analogRead(rightLineDetectorPin) > RIGHT_THRESHOLD;
-      } else {
-        return analogRead(rightLineDetectorPin) > RIGHT_THRESHOLD;
-      }
-    }
-
-    void adaptLeftLineThreshold() {
-      int current = analogRead(leftLineDetectorPin);
-      LEFT_THRESHOLD = current + ADAPTIVE_THRESHOLD_OFFSET;
-    }
-
-    void adaptRightLineThreshold() {
-      int current = analogRead(rightLineDetectorPin);
-      RIGHT_THRESHOLD = current + ADAPTIVE_THRESHOLD_OFFSET;
-    }
-
-    void followLine() {
-      /* This function should handle the entire line following process from start to finish. */
-      int numIgnores;
-      int counter = 0;
-      prevLeftSensor = false;
-      prevRightSensor = false;
-
-      switch (state) {
-        case START_TO_TUNNEL:
-          numIgnores = 2;
-          // first ignore for the start box, and second ignore for the junction when the tracks merge
-          break;
-        // to be added on
-      }
-
-//      adaptLeftLineThreshold();
-//      adaptRightLinethreshold();
-      goForward();
-
-      /* The following while loop is meant to handle the junctions by ignoring a set number
-       *  of instances where both sensors return high.
-       */
-      while (counter <= numIgnores) {
-        while (!leftDetectorOnLine() || !rightDetectorOnLine()) {          
-          if (leftDetectorOnLine()) {
-            turnLeft();
-            goForward();
-            prevLeftSensor = true;
-            prevRightSensor = false;
-            continue;
-          }
-          
-          if (rightDetectorOnLine()) {
-            turnRight();
-            goForward();
-            prevLeftSensor = false;
-            prevRightSensor = true;
-            continue;
-          }
-          
-          prevLeftSensor = false;
-          prevRightSensor = false;
-        }
-
-        if (!prevLeftSensor || !prevRightSensor) {
-          prevLeftSensor = true;
-          prevRightSensor = true;
-          counter++;
-        }
-      }
-
-      // Note: may need different logic to handle when to stop depending on the state
-
-      stopMoving(); // presumably reached the end of tunnel
-    }
-
     int scanIR() {
       /* Sweeps servo to scan for IR signals. Returns the angle of the IR signal if a
        *  signal is found, otherwise returns NO_IR_SIGNAL_FOUND.
@@ -246,6 +164,7 @@ class Robot {
 
     bool requiresServicing() {
       // to be implemented
+      return true;
     }
 
     void lightUpLED() {
@@ -296,9 +215,6 @@ class Robot {
      
   public:
     void start() {
-      state = START_TO_TUNNEL;
-      followLine(); // this should take the robot all the way to the end of the tunnel
-      moveForward(3); // constant to be changed, this moves the robot completely out of the tunnel
       state = SEARCH;
       findRobot();
       // to be continued
