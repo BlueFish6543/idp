@@ -12,8 +12,8 @@ void setup() {
 }
 
 void loop() {
-  leftMotor->setSpeed(150);
+  leftMotor->setSpeed(200);
   leftMotor->run(FORWARD);
-  rightMotor->setSpeed(150);
+  rightMotor->setSpeed(200);
   rightMotor->run(FORWARD);
 }

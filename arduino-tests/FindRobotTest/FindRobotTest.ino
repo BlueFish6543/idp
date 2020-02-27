@@ -6,6 +6,8 @@
 #include <WiFiNINA.h>
 #include <WiFiUdp.h>
 
+#define PI 3.14159265
+
 int status = WL_IDLE_STATUS;
 char ssid[] = "galaxy-s8";
 char pass[] = "QuarkZero";
@@ -127,16 +129,17 @@ class Robot {
     static const int MAX_SERVO_ANGLE = 180; // to be changed
     static const int DISTANCE_THRESHOLD; // to be changed
     static const int NO_IR_SIGNAL_FOUND = -1000; // to be changed
-    static const int MOVE_FORWARD_CALIBRATION_CONSTANT; // to be changed
-    static const int TURN_CALIBRATION_CONSTANT; // to be changed
-    static const int NORMAL_MOTOR_SPEED = 100; // to be changed
+    static const int MOVE_FORWARD_CALIBRATION_CONSTANT = 8543; // milliseconds to traverse half the table = 360 pixels
+    static const int TURN_CALIBRATION_CONSTANT = 4800; // milliseconds to make a complete revolution
+    static const int NORMAL_MOTOR_SPEED = 200; // to be changed
     static const int TURN_DELAY = 100; // to be changed
     int LEFT_THRESHOLD = 150; // to be changed
     int RIGHT_THRESHOLD = 300; // to be changed
     static const int ADAPTIVE_THRESHOLD_OFFSET = 150; // to be changed
-    static const int DEFAULT_MOVE_FORWARD_DURATION = 5; // in seconds, to be changed
+    static const int X_CENTRE = 365; // hardcoded value
+    static const int Y_CENTRE = 339; // hardcoded value
     
-    State state; // current state of t        he robot
+    State state; // current state of the robot
     Pose pose; // current pose of the robot
     int distanceToObjectInFront; // may need to use an interrupt for this
 
@@ -144,54 +147,38 @@ class Robot {
     int prevRightSensor = 0;
 
     int servoAngle = 0;
+    int coordinateCounter = 0;
 
     int targetCoordinates[4]; // holds (x, y) coordinates of the targets
+    const int numCoordinates = sizeof(targetCoordinates) / sizeof(*targetCoordinates);
 
     bool allServicingRobotsCollected = false;
 
     void obtainTargetCoordinates() {
-      for (int i = 0; i < (sizeof(targetCoordinates) / sizeof(*targetCoordinates)); i++) {
+      for (int i = 0; i < numCoordinates; i++) {
         int value = readPacket();
         targetCoordinates[i] = value;
       }
     }
 
-    void updatePoseForward(int duration) {
-      pose.x += MOVE_FORWARD_CALIBRATION_CONSTANT * duration * cos(pose.theta);
-      pose.y += MOVE_FORWARD_CALIBRATION_CONSTANT * duration * sin(pose.theta);
-    }
-
-    void updatePoseTurn() {
-      pose.theta += TURN_CALIBRATION_CONSTANT;
-    }
-
     void goForward() {
       leftMotor->setSpeed(NORMAL_MOTOR_SPEED);
-      leftMotor->run(FORWARD);
       rightMotor->setSpeed(NORMAL_MOTOR_SPEED);
+      leftMotor->run(FORWARD);
       rightMotor->run(FORWARD);
     }
 
-    void moveForward(int duration) {
-      // duration in seconds
-      leftMotor->setSpeed(NORMAL_MOTOR_SPEED);
-      leftMotor->run(FORWARD);
-      rightMotor->setSpeed(NORMAL_MOTOR_SPEED);
-      rightMotor->run(FORWARD);
-      
-      int counter = 0;
-      while ((distanceToObjectInFront > DISTANCE_THRESHOLD) && (counter < duration * 10)) {
-        // robot will stop if it detects object in front
-        delay(100);
-        counter++;
-      }
+    void moveForward(int distance) {
+      // distance in pixels
+      long delayTime = (long) MOVE_FORWARD_CALIBRATION_CONSTANT * (long) distance / 360L;
+      goForward();
+      delay(delayTime);      
       stopMoving();
-      updatePoseForward(duration);
     }
 
     void turnLeft() {
-      leftMotor->setSpeed(0);
-      leftMotor->run(RELEASE);
+      leftMotor->setSpeed(NORMAL_MOTOR_SPEED);
+      leftMotor->run(BACKWARD);
       rightMotor->setSpeed(NORMAL_MOTOR_SPEED);
       rightMotor->run(FORWARD);
       delay(TURN_DELAY);
@@ -200,8 +187,8 @@ class Robot {
     void turnRight() {
       leftMotor->setSpeed(NORMAL_MOTOR_SPEED);
       leftMotor->run(FORWARD);
-      rightMotor->setSpeed(0);
-      rightMotor->run(RELEASE);
+      rightMotor->setSpeed(NORMAL_MOTOR_SPEED);
+      rightMotor->run(BACKWARD);
       delay(TURN_DELAY);
     }
     
@@ -214,8 +201,16 @@ class Robot {
 
     void turnByAngle(int angle) {
       // turns robot by set angle, angle can be positive or negative
-      // to be implemented
-      updatePoseTurn();
+      long delayTime = (long) TURN_CALIBRATION_CONSTANT * (long) abs(angle) / 360L;
+      if (angle > 0) {
+        turnRight();
+        delay(delayTime);
+        stopMoving();
+      } else if (angle < 0) {
+        turnLeft();
+        delay(delayTime);
+        stopMoving();
+      }
     }
 
     bool leftDetectorOnLine() {
@@ -300,6 +295,20 @@ class Robot {
       stopMoving(); // presumably reached the end of tunnel
     }
 
+    int getTheta(int x, int y) {
+      // Assume x, y are to the front of the tunnel
+      int theta = atan2(Y_CENTRE - y, X_CENTRE - x) * 180 / PI;
+      Serial.println(theta);
+      return theta;
+    }
+
+    int getDistance(int x, int y) {
+      long distanceSquared = pow((long) X_CENTRE - x, 2) + pow((long) Y_CENTRE - y, 2);
+      long distance = sqrt(distanceSquared);
+      Serial.println(distance);
+      return (int) distance;
+    }
+
     bool requiresServicing() {
       // to be implemented
     }
@@ -312,15 +321,16 @@ class Robot {
       // to be implemented
     }
 
-    void locateRobot() {
-      /* Locates target robot and turns towards it. */
-    }
-
     void findRobot() {
-      while (distanceToObjectInFront > DISTANCE_THRESHOLD) {
-        locateRobot();
-        moveForward(DEFAULT_MOVE_FORWARD_DURATION);
-      }
+      Serial.println("Finding robot");
+      int x = targetCoordinates[coordinateCounter];
+      int y = targetCoordinates[coordinateCounter + 1];
+      coordinateCounter += 2;
+      int theta = getTheta(x, y);
+      int distance = getDistance(x, y);
+      
+      turnByAngle(theta);
+      moveForward(distance);
       
       // Target should be in front of robot at this point
       lightUpLED();
@@ -358,7 +368,8 @@ const int Robot::TURN_CALIBRATION_CONSTANT;
 const int Robot::NORMAL_MOTOR_SPEED;
 const int Robot::TURN_DELAY;
 const int Robot::ADAPTIVE_THRESHOLD_OFFSET;
-const int Robot::DEFAULT_MOVE_FORWARD_DURATION;
+const int Robot::X_CENTRE;
+const int Robot::Y_CENTRE;
 
 void setup() {
   AFMS.begin();
@@ -370,6 +381,5 @@ void setup() {
 void loop() {
   Robot(robot);
   robot.start();
-  delay(2000);
   exit(0);
 }

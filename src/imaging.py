@@ -130,11 +130,12 @@ def send_data(sock, centres):
         sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
 
 if __name__ == '__main__':
-    src = cv2.imread(os.path.join(os.getcwd(), 'images', 'test1.jpg'))
+    src = cv2.imread(os.path.join(os.getcwd(), 'images', 'test2.jpg'))
     assert src is not None
     image = Image(copy.copy(src), threshold=2, num_colours=8, kernel_size=5)
     image.draw_contours()
     centres = image.get_centres()
+    print(centres)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     send_data(sock, centres)
     image.show()
