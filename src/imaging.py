@@ -1,7 +1,12 @@
 import copy
 import os
+import socket
+import time
 import cv2
 import numpy as np
+
+UDP_IP = "192.168.43.225"
+UDP_PORT = 2390
 
 class Image:
     def __init__(self, src, threshold, num_colours, kernel_size):
@@ -117,10 +122,19 @@ class Image:
     def get_centres(self):
         return np.array(self.centres)
 
+def send_data(sock, centres):
+    for coordinate in np.nditer(centres):
+        # In the order x1, y1, x2, y2 etc.
+        time.sleep(0.5)
+        message = str(coordinate)
+        sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
+
 if __name__ == '__main__':
-    src = cv2.imread(os.path.join(os.getcwd(), 'images', 'test9.jpg'))
+    src = cv2.imread(os.path.join(os.getcwd(), 'images', 'test1.jpg'))
     assert src is not None
     image = Image(copy.copy(src), threshold=2, num_colours=8, kernel_size=5)
     image.draw_contours()
     centres = image.get_centres()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    send_data(sock, centres)
     image.show()

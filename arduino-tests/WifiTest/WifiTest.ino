@@ -69,8 +69,9 @@ void loop() {
     if (len > 0) {
       packetBuffer[len] = 0;
     }
+    int value = atoi(packetBuffer);
     Serial.println("Contents:");
-    Serial.println(packetBuffer);
+    Serial.println(value);
 
     // send a reply, to the IP address and port that sent us the packet we received
     Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
