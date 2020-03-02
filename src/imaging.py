@@ -129,12 +129,23 @@ def send_data(sock, centres):
         message = str(coordinate)
         sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
 
+def dist(x, y):
+    x_centre = 378
+    y_centre = 340
+    return np.sqrt((x - x_centre) ** 2 + (y - y_centre) ** 2)
+
+def sort_coordinates(centres):
+    centres = list(centres)
+    centres.sort(key=lambda centre: dist(centre[0], centre[1]))
+    return np.asarray(centres)
+    
+
 if __name__ == '__main__':
-    src = cv2.imread(os.path.join(os.getcwd(), 'images', 'test2.jpg'))
+    src = cv2.imread(os.path.join(os.getcwd(), 'images', 'test.jpg'))
     assert src is not None
     image = Image(copy.copy(src), threshold=2, num_colours=8, kernel_size=5)
     image.draw_contours()
-    centres = image.get_centres()
+    centres = sort_coordinates(image.get_centres())
     print(centres)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     send_data(sock, centres)

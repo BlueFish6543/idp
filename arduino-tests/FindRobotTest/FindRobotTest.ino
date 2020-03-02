@@ -128,16 +128,18 @@ class Robot {
     // Constants
     static const int MAX_SERVO_ANGLE = 180; // to be changed
     static const int DISTANCE_THRESHOLD; // to be changed
-    static const int NO_IR_SIGNAL_FOUND = -1000; // to be changed
-    static const int MOVE_FORWARD_CALIBRATION_CONSTANT = 8543; // milliseconds to traverse half the table = 360 pixels
+    static const int MOVE_FORWARD_CALIBRATION_CONSTANT = 6000; // milliseconds to traverse half the table = 360 pixels
     static const int TURN_CALIBRATION_CONSTANT = 4800; // milliseconds to make a complete revolution
     static const int NORMAL_MOTOR_SPEED = 200; // to be changed
     static const int TURN_DELAY = 100; // to be changed
     int LEFT_THRESHOLD = 150; // to be changed
     int RIGHT_THRESHOLD = 300; // to be changed
     static const int ADAPTIVE_THRESHOLD_OFFSET = 150; // to be changed
-    static const int X_CENTRE = 365; // hardcoded value
-    static const int Y_CENTRE = 339; // hardcoded value
+    static const int X_CENTRE = 378; // hardcoded value
+    static const int Y_CENTRE = 340; // hardcoded value
+    static const int DISTANCE_OFFSET = 0; // to be changed
+    static const int THETA_THRESHOLD = 100; // to be changed
+    static const int SENTINEL_VALUE = -1000;
     
     State state; // current state of the robot
     Pose pose; // current pose of the robot
@@ -149,8 +151,10 @@ class Robot {
     int servoAngle = 0;
     int coordinateCounter = 0;
 
-    int targetCoordinates[4]; // holds (x, y) coordinates of the targets
+    int targetCoordinates[2]; // holds (x, y) coordinates of the targets
     const int numCoordinates = sizeof(targetCoordinates) / sizeof(*targetCoordinates);
+
+    int actionHistory[4] = {SENTINEL_VALUE, SENTINEL_VALUE, SENTINEL_VALUE, SENTINEL_VALUE}; // stores history of actions
 
     bool allServicingRobotsCollected = false;
 
@@ -245,13 +249,28 @@ class Robot {
       int counter = 0;
       prevLeftSensor = false;
       prevRightSensor = false;
+      bool ignoreRightDetector = false;
 
       switch (state) {
         case START_TO_TUNNEL:
           numIgnores = 2;
           // first ignore for the start box, and second ignore for the junction when the tracks merge
           break;
-        // to be added on
+          
+        case TUNNEL_TO_SERVICE:
+          numIgnores = 1;
+          // ignore for the junction
+          break;
+
+        case SERVICE_TO_TUNNEL:
+          numIgnores = 1;
+          // ignore for the junction
+          break;
+
+        case TUNNEL_TO_FINISH:
+          numIgnores = 1;
+          // ignore for the junction
+          break;
       }
 
 //      adaptLeftLineThreshold();
@@ -262,7 +281,9 @@ class Robot {
        *  of instances where both sensors return high.
        */
       while (counter <= numIgnores) {
-        while (!leftDetectorOnLine() || !rightDetectorOnLine()) {          
+        while (!leftDetectorOnLine() || !rightDetectorOnLine()) {
+          ignoreRightDetector = false;
+
           if (leftDetectorOnLine()) {
             turnLeft();
             goForward();
@@ -271,7 +292,7 @@ class Robot {
             continue;
           }
           
-          if (rightDetectorOnLine()) {
+          if (!ignoreRightDetector && rightDetectorOnLine()) {
             turnRight();
             goForward();
             prevLeftSensor = false;
@@ -286,6 +307,9 @@ class Robot {
         if (!prevLeftSensor || !prevRightSensor) {
           prevLeftSensor = true;
           prevRightSensor = true;
+          if (state == TUNNEL_TO_FINISH) {
+            ignoreRightDetector = true;
+          }
           counter++;
         }
       }
@@ -306,7 +330,7 @@ class Robot {
       long distanceSquared = pow((long) X_CENTRE - x, 2) + pow((long) Y_CENTRE - y, 2);
       long distance = sqrt(distanceSquared);
       Serial.println(distance);
-      return (int) distance;
+      return max((int) distance - DISTANCE_OFFSET, 0);
     }
 
     bool requiresServicing() {
@@ -317,8 +341,27 @@ class Robot {
       // to be implemented
     }
 
-    void moveRobotToNextLocation() {
-      // to be implemented
+    void moveRobotToDeadZone(int x, int y, int theta) {
+      if (y > Y_CENTRE) {
+        turnByAngle(-90);
+        actionHistory[0] = -90;
+        moveForward(y - Y_CENTRE);
+        actionHistory[1] = y - Y_CENTRE;
+        turnByAngle(theta + 90);
+        actionHistory[2] = theta + 90;
+        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
+        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET);
+        
+      } else if (y < Y_CENTRE) {
+        turnByAngle(90);
+        actionHistory[0] = 90;
+        moveForward(Y_CENTRE - y);
+        actionHistory[1] = Y_CENTRE - y;
+        turnByAngle(theta - 90);
+        actionHistory[2] = theta - 90;
+        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
+        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET);
+      }
     }
 
     void findRobot() {
@@ -327,10 +370,18 @@ class Robot {
       int y = targetCoordinates[coordinateCounter + 1];
       coordinateCounter += 2;
       int theta = getTheta(x, y);
-      int distance = getDistance(x, y);
-      
-      turnByAngle(theta);
-      moveForward(distance);
+
+      if (abs(theta) > THETA_THRESHOLD) {
+        moveRobotToDeadZone(x, y, theta);
+      } else {
+        int distance = getDistance(x, y);
+        turnByAngle(theta);
+        actionHistory[0] = theta;
+        moveForward(distance);
+        actionHistory[1] = distance;
+      }
+
+      /* Need to check whether it needs servicing or recharging */
       
       // Target should be in front of robot at this point
       lightUpLED();
@@ -342,6 +393,21 @@ class Robot {
     }
 
     void goBackToTunnel() {
+      turnByAngle(180); // to be removed
+      if (actionHistory[3] != SENTINEL_VALUE) {
+        moveForward(actionHistory[3]);
+        turnByAngle(-1 * actionHistory[2]);
+      }
+      moveForward(actionHistory[1]);
+      turnByAngle(-1 * actionHistory[0]);
+
+      // Reset
+      for (int i = 0; i < 3; i++) {
+        actionHistory[i] = SENTINEL_VALUE;
+      }
+    }
+
+    void dropOffRobot() {
       // to be implemented
     }
 
@@ -354,15 +420,33 @@ class Robot {
   public:
     void start() {
       obtainTargetCoordinates();
-      state = SEARCH;
-      findRobot();
-      // to be continued
+      
+//      state = START_TO_TUNNEL;
+//      followLine();
+
+      for (int i = 0; i < numCoordinates / 2; i++) {
+        state = SEARCH;
+        findRobot();
+        
+//        state = RETURN_TO_TUNNEL;
+//        goBackToTunnel();
+//        
+//        state = TUNNEL_TO_SERVICE;
+//        followLine();
+//        dropOffRobot();
+//        
+//        state = SERVICE_TO_TUNNEL;
+//        followLine();
+      }
+
+//      state = TUNNEL_TO_FINISH;
+//      followLine();
+//      moveForward(75);
     }
 };
 
 const int Robot::MAX_SERVO_ANGLE;
 const int Robot::DISTANCE_THRESHOLD;
-const int Robot::NO_IR_SIGNAL_FOUND;
 const int Robot::MOVE_FORWARD_CALIBRATION_CONSTANT;
 const int Robot::TURN_CALIBRATION_CONSTANT;
 const int Robot::NORMAL_MOTOR_SPEED;
@@ -370,6 +454,9 @@ const int Robot::TURN_DELAY;
 const int Robot::ADAPTIVE_THRESHOLD_OFFSET;
 const int Robot::X_CENTRE;
 const int Robot::Y_CENTRE;
+const int Robot::DISTANCE_OFFSET;
+const int Robot::THETA_THRESHOLD;
+const int Robot::SENTINEL_VALUE;
 
 void setup() {
   AFMS.begin();
