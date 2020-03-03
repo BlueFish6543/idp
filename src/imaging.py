@@ -129,6 +129,20 @@ def send_data(sock, centres):
         time.sleep(0.5)
         message = str(coordinate)
         sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
+    
+    if len(np.nditer(centres)) < 8:
+        n = 8 - len(np.nditer(centres))
+        for i in range(n):
+            time.sleep(0)
+            message = '0'
+            sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
+
+def receive_data(sock):
+    sock.bind((UDP_IP, UDP_PORT))
+    while True:
+        data, addr = sock.recvfrom(1024)  # buffer size of 1024 bytes
+        if data == "Connection established":
+            break
 
 def dist(x, y):
     x_centre = 378
@@ -144,13 +158,14 @@ def take_photo():
     os.system("ffmpeg -f video4linux2 -s 960x720 -i /dev/video4 -ss 0:0:1 -frames 1 ./images/test.jpg -y")
 
 if __name__ == '__main__':
-    # take_photo()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    receive_data(sock)
+    take_photo()
     src = cv2.imread(os.path.join(os.getcwd(), 'images', 'test.jpg'))
     assert src is not None
     image = Image(copy.copy(src), threshold=2, num_colours=8, kernel_size=5)
     image.draw_contours()
     centres = sort_coordinates(image.get_centres())
     print(centres)
-    # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # send_data(sock, centres)
+    send_data(sock, centres)
     image.show()

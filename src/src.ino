@@ -114,6 +114,13 @@ int readPacket() {
   }
 }
 
+void acknowledge() {
+  char message[] = "Connection established";
+  Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+  Udp.write(message);
+  Udp.endPacket();
+}
+
 class Robot {
   private:
     enum State {
@@ -418,29 +425,37 @@ class Robot {
      
   public:
     void start() {
+      acknowledge();
       obtainTargetCoordinates();
       
       state = START_TO_TUNNEL;
       followLine();
 
       for (int i = 0; i < numCoordinates / 2; i++) {
+        if (targetCoordinates[coordinateCounter] == 0) {
+          break;
+        }
+        
         state = SEARCH;
         findRobot();
         
         state = RETURN_TO_TUNNEL;
         goBackToTunnel();
-        
-        state = TUNNEL_TO_SERVICE;
-        followLine();
-        dropOffRobot();
-        
-        state = SERVICE_TO_TUNNEL;
-        followLine();
-      }
 
-      state = TUNNEL_TO_FINISH;
-      followLine();
-      moveForward(75);
+        if (i == numCoordinates / 2) {
+          state = TUNNEL_TO_FINISH;
+          followLine();
+          moveForward(75);
+          
+        } else {
+          state = TUNNEL_TO_SERVICE;
+          followLine();
+          dropOffRobot();
+          
+          state = SERVICE_TO_TUNNEL;
+          followLine();
+        }     
+      }
     }
 };
 
