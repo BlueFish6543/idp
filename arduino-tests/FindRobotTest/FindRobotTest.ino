@@ -127,7 +127,6 @@ class Robot {
 
     // Constants
     static const int MAX_SERVO_ANGLE = 180; // to be changed
-    static const int DISTANCE_THRESHOLD; // to be changed
     static const int MOVE_FORWARD_CALIBRATION_CONSTANT = 6000; // milliseconds to traverse half the table = 360 pixels
     static const int TURN_CALIBRATION_CONSTANT = 4800; // milliseconds to make a complete revolution
     static const int NORMAL_MOTOR_SPEED = 200; // to be changed
@@ -446,7 +445,6 @@ class Robot {
 };
 
 const int Robot::MAX_SERVO_ANGLE;
-const int Robot::DISTANCE_THRESHOLD;
 const int Robot::MOVE_FORWARD_CALIBRATION_CONSTANT;
 const int Robot::TURN_CALIBRATION_CONSTANT;
 const int Robot::NORMAL_MOTOR_SPEED;

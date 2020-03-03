@@ -84,18 +84,19 @@ class Image:
         # Convert image to grayscale
         gray = cv2.cvtColor(quantized, cv2.COLOR_BGR2GRAY)
 
-        # Dilate
-        kernel = np.ones((self.kernel_size, self.kernel_size), np.uint8)
-        dilation = cv2.dilate(gray, kernel, iterations=1)
-
         # Convert image to binary
         thresh = intensities[self.num_colours - self.threshold] - 2
-        retval, bw = cv2.threshold(dilation, thresh, 255, cv2.THRESH_BINARY)
+        retval, bw = cv2.threshold(gray, thresh, 255, cv2.THRESH_BINARY)
+
+        # Dilate
+        kernel = np.ones((self.kernel_size, self.kernel_size), np.uint8)
+        bw = cv2.dilate(bw, kernel, iterations=1)
 
         # Apply mask
         mask = 255 * np.ones_like(bw)
-        mask[:, :30] = 0
-        mask[:, 620:] = 0
+        mask[:, :45] = 0
+        mask[:, 600:] = 0
+        mask[255:420, 365:600] = 0
         bw = np.minimum(bw, mask)
 
         # Find all the contours in the threshold range
@@ -138,15 +139,18 @@ def sort_coordinates(centres):
     centres = list(centres)
     centres.sort(key=lambda centre: dist(centre[0], centre[1]))
     return np.asarray(centres)
-    
+
+def take_photo():
+    os.system("ffmpeg -f video4linux2 -s 960x720 -i /dev/video4 -ss 0:0:1 -frames 1 ./images/test.jpg -y")
 
 if __name__ == '__main__':
+    # take_photo()
     src = cv2.imread(os.path.join(os.getcwd(), 'images', 'test.jpg'))
     assert src is not None
     image = Image(copy.copy(src), threshold=2, num_colours=8, kernel_size=5)
     image.draw_contours()
     centres = sort_coordinates(image.get_centres())
     print(centres)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    send_data(sock, centres)
+    # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # send_data(sock, centres)
     image.show()
