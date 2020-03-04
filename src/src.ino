@@ -6,11 +6,15 @@
 #include <WiFiNINA.h>
 #include <WiFiUdp.h>
 
+/* Wi-Fi information for the phone's hotspost to which the Arduino
+ *  and the computer are connected to.
+ */
 int status = WL_IDLE_STATUS;
 char ssid[] = "galaxy-s8";
 char pass[] = "QuarkZero";
 int keyIndex = 0; // (needed only for WEP)
 
+/* Default UDP port to send data over and IP address of the computer */
 unsigned int localPort = 2390;
 IPAddress ip(192, 168, 43, 170);
 
@@ -18,23 +22,19 @@ char packetBuffer[255];
 
 WiFiUDP Udp;
 
+/* Motors for the robot */
 Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
 Adafruit_DCMotor *leftMotor = AFMS.getMotor(1);
 Adafruit_DCMotor *rightMotor = AFMS.getMotor(2);
 
 Servo servo;
 
+/* Pins on the Arduino */
 int leftLineDetectorPin = A2; // to be changed
 int rightLineDetectorPin = A1; // to be changed
 int servoPin = 9; // to be changed
-int IRPhototransistorPin; // to be changed
 
-typedef struct {
-  int x;
-  int y;
-  int theta;
-} Pose;
-
+/* Connects to the phone's Wi-Fi hotspot. */
 void setupWiFi() {
   while (!Serial) {
     ; // wait for serial port to connect, needed for native USB port only
@@ -69,6 +69,7 @@ void setupWiFi() {
   Udp.begin(localPort);
 }
 
+/* Prints the Wi-Fi status. */
 void printWiFiStatus() {
   // Print the SSID of the network you're attached to:
   Serial.print("SSID: ");
@@ -86,6 +87,7 @@ void printWiFiStatus() {
   Serial.println(" dBm");
 }
 
+/* Reads data sent from the computer. */
 int readPacket() {
   while (true) {
     // If there's data available, read a packet
@@ -113,6 +115,9 @@ int readPacket() {
   }
 }
 
+/* Sends a message from the Arduino to the computer when the Arduino
+ *  starts up to let the computer know it's ready to receive data.
+ */
 void acknowledge() {
   char message[] = "Connection established";
   Udp.beginPacket(ip, localPort);
@@ -120,8 +125,10 @@ void acknowledge() {
   Udp.endPacket();
 }
 
+/* The main class for the robot. */
 class Robot {
   private:
+    /* Stores the current state of the robot. */
     enum State {
       START_TO_TUNNEL, // from start to tunnel
       TUNNEL_TO_FINISH, // from tunnel to finish
@@ -132,31 +139,29 @@ class Robot {
     };
 
     // Constants
-    static const int MAX_SERVO_ANGLE = 180; // to be changed
+    static const int MAX_SERVO_ANGLE = 180; // maximum servo angle
     static const int MOVE_FORWARD_CALIBRATION_CONSTANT = 6000; // milliseconds to traverse half the table = 360 pixels
     static const int TURN_CALIBRATION_CONSTANT = 4800; // milliseconds to make a complete revolution
-    static const int NORMAL_MOTOR_SPEED = 200; // to be changed
-    static const int TURN_DELAY = 100; // to be changed
-    int LEFT_THRESHOLD = 700; // to be changed
-    int RIGHT_THRESHOLD = 700; // to be changed
-    static const int ADAPTIVE_THRESHOLD_OFFSET = 150; // to be changed
-    static const int X_CENTRE = 378; // hardcoded value
-    static const int Y_CENTRE = 340; // hardcoded value
-    static const int DISTANCE_OFFSET = 50; // to be changed
-    static const int THETA_THRESHOLD = 100; // to be changed
-    static const int SENTINEL_VALUE = -1000;
+    static const int NORMAL_MOTOR_SPEED = 200; // maximum possible value is 255
+    static const int TURN_DELAY = 100; // during line following, each turnLeft or turnRight command executes by this number of milliseconds
+    int LEFT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold
+    int RIGHT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold
+    static const int ADAPTIVE_THRESHOLD_OFFSET = 150; // for adaptive thresholding for line following, currently not used
+    static const int X_CENTRE = 378; // hardcoded value of x coordinate of the end of the tunnel
+    static const int Y_CENTRE = 340; // hardcoded value of y coordinate of the end of the tunnel
+    static const int DISTANCE_OFFSET = 50; // robot should stop this number of pixels from the target
+    static const int THETA_THRESHOLD = 100; // robot uses a different algorithm to move towards target if theta is above this
+    static const int SENTINEL_VALUE = -1000; // sentinel value for out-of-range data
     
     State state; // current state of the robot
-    Pose pose; // current pose of the robot
-    int distanceToObjectInFront; // may need to use an interrupt for this
 
-    int prevLeftSensor = 0;
-    int prevRightSensor = 0;
+    int prevLeftSensor = 0; // whether left line sensor was previously on line (1) or not (0)
+    int prevRightSensor = 0; // whether right line sensor was previously on line (1) or not (0)
 
-    int servoAngle = 0;
-    int coordinateCounter = 0;
+    int servoAngle = 0; // servo angle
+    int coordinateCounter = 0; // which coordinate (i.e. target) the robot is currently finding
 
-    int targetCoordinates[8]; // holds (x, y) coordinates of the targets
+    int targetCoordinates[8]; // holds (x, y) coordinates of the targets, assume a maximum of 4 coordinates
     const int numCoordinates = sizeof(targetCoordinates) / sizeof(*targetCoordinates);
 
     int actionHistory[4] = {SENTINEL_VALUE, SENTINEL_VALUE, SENTINEL_VALUE, SENTINEL_VALUE}; // stores history of actions
@@ -352,8 +357,8 @@ class Robot {
         actionHistory[0] = -90;
         moveForward(y - Y_CENTRE);
         actionHistory[1] = y - Y_CENTRE;
-        turnByAngle(theta + 90);
-        actionHistory[2] = theta + 90;
+        turnByAngle(-90);
+        actionHistory[2] = -90;
         moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
         actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET);
         
@@ -362,8 +367,8 @@ class Robot {
         actionHistory[0] = 90;
         moveForward(Y_CENTRE - y);
         actionHistory[1] = Y_CENTRE - y;
-        turnByAngle(theta - 90);
-        actionHistory[2] = theta - 90;
+        turnByAngle(90);
+        actionHistory[2] = 90;
         moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
         actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET);
       }
