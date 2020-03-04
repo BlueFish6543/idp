@@ -139,9 +139,8 @@ class Robot {
     };
 
     // Constants
-    static const int MAX_SERVO_ANGLE = 180; // maximum servo angle
     static const int MOVE_FORWARD_CALIBRATION_CONSTANT = 6000; // milliseconds to traverse half the table = 360 pixels
-    static const int TURN_CALIBRATION_CONSTANT = 4800; // milliseconds to make a complete revolution
+    static const long TURN_CALIBRATION_CONSTANT = 4635; // milliseconds to make a complete revolution
     static const int NORMAL_MOTOR_SPEED = 200; // maximum possible value is 255
     static const int TURN_DELAY = 100; // during line following, each turnLeft or turnRight command executes by this number of milliseconds
     int LEFT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold
@@ -149,7 +148,7 @@ class Robot {
     static const int ADAPTIVE_THRESHOLD_OFFSET = 150; // for adaptive thresholding for line following, currently not used
     static const int X_CENTRE = 378; // hardcoded value of x coordinate of the end of the tunnel
     static const int Y_CENTRE = 340; // hardcoded value of y coordinate of the end of the tunnel
-    static const int DISTANCE_OFFSET = 50; // robot should stop this number of pixels from the target
+    static const int DISTANCE_OFFSET = 70; // robot should stop this number of pixels from the target
     static const int THETA_THRESHOLD = 100; // robot uses a different algorithm to move towards target if theta is above this
     static const int SENTINEL_VALUE = -1000; // sentinel value for out-of-range data
     
@@ -158,7 +157,6 @@ class Robot {
     int prevLeftSensor = 0; // whether left line sensor was previously on line (1) or not (0)
     int prevRightSensor = 0; // whether right line sensor was previously on line (1) or not (0)
 
-    int servoAngle = 0; // servo angle
     int coordinateCounter = 0; // which coordinate (i.e. target) the robot is currently finding
 
     int targetCoordinates[8]; // holds (x, y) coordinates of the targets, assume a maximum of 4 coordinates
@@ -215,7 +213,7 @@ class Robot {
 
     void turnByAngle(int angle) {
       // turns robot by set angle, angle can be positive or negative
-      long delayTime = (long) TURN_CALIBRATION_CONSTANT * (long) abs(angle) / 360L;
+      long delayTime = TURN_CALIBRATION_CONSTANT * (long) abs(angle) / 360L;
       if (angle > 0) {
         turnRight();
         delay(delayTime);
@@ -395,12 +393,29 @@ class Robot {
       
       // Target should be in front of robot at this point
       lightUpLED();
+      openSweeper();
+      delay(1500);
       collectRobot();
-      turnByAngle(180); // to be removed 
+      delay(1500);
+    }
+
+    void openSweeper() {
+      int pos;
+      for (pos = 90; pos >= 20; pos -= 1) { // goes from 0 degrees to 90 degrees
+        // in steps of 1 degree
+        servo.write(pos);
+        delay(5);
+      }
     }
 
     void collectRobot() {
-      // to be implemented
+      turnByAngle(200);
+      int pos;
+      for (pos = 20; pos <= 90; pos += 1) { // goes from 0 degrees to 90 degrees
+        // in steps of 1 degree
+        servo.write(pos);
+        delay(2);
+      }
     }
 
     void goBackToTunnel() {
@@ -420,52 +435,45 @@ class Robot {
     void dropOffRobot() {
       // to be implemented
     }
-
-    /* TODO:
-     *  Make LEDs light up
-     *  Predetermined route for robot
-     *  OpenCV
-     */
      
   public:
     void start() {
-      acknowledge();
-      obtainTargetCoordinates();
+//      acknowledge();
+//      obtainTargetCoordinates();
       
       state = START_TO_TUNNEL;
       followLine();
 
-      for (int i = 0; i < numCoordinates / 2; i++) {
-        if (targetCoordinates[coordinateCounter] == 0) {
-          break;
-        }
-        
-        state = SEARCH;
-        findRobot();
-        
-        state = RETURN_TO_TUNNEL;
-        goBackToTunnel();
-
-        if (i == numCoordinates / 2) {
-          state = TUNNEL_TO_FINISH;
-          followLine();
-          moveForward(75);
-          
-        } else {
-          state = TUNNEL_TO_SERVICE;
-          followLine();
-          dropOffRobot();
-          
-          state = SERVICE_TO_TUNNEL;
-          followLine();
-        }     
+//      for (int i = 0; i < numCoordinates / 2; i++) {
+//        if (targetCoordinates[coordinateCounter] == 0) {
+//          break;
+//        }
+//        
+//        state = SEARCH;
+//        findRobot();
+//        
+//        state = RETURN_TO_TUNNEL;
+//        goBackToTunnel();
+//
+//        if (i == numCoordinates / 2) {
+//          state = TUNNEL_TO_FINISH;
+//          followLine();
+//          moveForward(75);
+//          
+//        } else {
+//          state = TUNNEL_TO_SERVICE;
+//          followLine();
+//          dropOffRobot();
+//          
+//          state = SERVICE_TO_TUNNEL;
+//          followLine();
+//        }     
       }
     }
 };
 
-const int Robot::MAX_SERVO_ANGLE;
 const int Robot::MOVE_FORWARD_CALIBRATION_CONSTANT;
-const int Robot::TURN_CALIBRATION_CONSTANT;
+const long Robot::TURN_CALIBRATION_CONSTANT;
 const int Robot::NORMAL_MOTOR_SPEED;
 const int Robot::TURN_DELAY;
 const int Robot::ADAPTIVE_THRESHOLD_OFFSET;
@@ -483,6 +491,8 @@ void setup() {
 }
 
 void loop() {
+  servo.write(90);
+  delay(1000);
   Robot(robot);
   robot.start();
   exit(0);
