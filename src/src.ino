@@ -6,14 +6,13 @@
 #include <WiFiNINA.h>
 #include <WiFiUdp.h>
 
-#define PI 3.14159265
-
 int status = WL_IDLE_STATUS;
 char ssid[] = "galaxy-s8";
 char pass[] = "QuarkZero";
 int keyIndex = 0; // (needed only for WEP)
 
 unsigned int localPort = 2390;
+IPAddress ip(192, 168, 43, 170);
 
 char packetBuffer[255];
 
@@ -116,7 +115,7 @@ int readPacket() {
 
 void acknowledge() {
   char message[] = "Connection established";
-  Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+  Udp.beginPacket(ip, localPort);
   Udp.write(message);
   Udp.endPacket();
 }

@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 
 UDP_IP = "192.168.43.225"
+IP_ADDR = "192.168.43.170"
 UDP_PORT = 2390
 
 class Image:
@@ -138,10 +139,11 @@ def send_data(sock, centres):
             sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
 
 def receive_data(sock):
-    sock.bind((UDP_IP, UDP_PORT))
+    sock.bind((IP_ADDR, UDP_PORT))
     while True:
         data, addr = sock.recvfrom(1024)  # buffer size of 1024 bytes
-        if data == "Connection established":
+        if data == b'Connection established':
+            print(data)
             break
 
 def dist(x, y):
@@ -160,7 +162,7 @@ def take_photo():
 if __name__ == '__main__':
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     receive_data(sock)
-    take_photo()
+    # take_photo()
     src = cv2.imread(os.path.join(os.getcwd(), 'images', 'test.jpg'))
     assert src is not None
     image = Image(copy.copy(src), threshold=2, num_colours=8, kernel_size=5)
