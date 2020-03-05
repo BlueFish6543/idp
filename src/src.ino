@@ -109,6 +109,7 @@ int readPacket() {
       int value = atoi(packetBuffer);
       Serial.println("Contents:");
       Serial.println(value);
+      sendMessage(String(value));
   
       return value;
     }
@@ -122,6 +123,14 @@ void acknowledge() {
   char message[] = "Connection established";
   Udp.beginPacket(ip, localPort);
   Udp.write(message);
+  Udp.endPacket();
+}
+
+void sendMessage(String message) {
+  char charMessage[1024];
+  message.toCharArray(charMessage, 1024);
+  Udp.beginPacket(ip, localPort);
+  Udp.write(charMessage);
   Udp.endPacket();
 }
 
@@ -149,9 +158,12 @@ class Robot {
     static const int ADAPTIVE_THRESHOLD_OFFSET = 200; // for adaptive thresholding for line following, currently not used
     static const int X_CENTRE = 378; // hardcoded value of x coordinate of the end of the tunnel
     static const int Y_CENTRE = 340; // hardcoded value of y coordinate of the end of the tunnel
-    static const int DISTANCE_OFFSET = 70; // robot should stop this number of pixels from the target
+    static const int DISTANCE_OFFSET = 90; // robot should stop this number of pixels from the target
     static const int THETA_THRESHOLD = 100; // robot uses a different algorithm to move towards target if theta is above this
     static const int SENTINEL_VALUE = -1000; // sentinel value for out-of-range data
+    static const int MOVE_BACKWARD_TIME = 750; // milliseconds for moving backward after dropping off robot
+    static const int GO_TO_FINISH_ANGLE = 3; // angle to turn when returning to finish
+    static const int GO_TO_FINISH_DISTANCE = 600; // distance in pixels to move forward when returning to finish
     
     State state; // current state of the robot
 
@@ -162,16 +174,19 @@ class Robot {
 
     int targetCoordinates[8]; // holds (x, y) coordinates of the targets, assume a maximum of 4 coordinates
     const int numCoordinates = sizeof(targetCoordinates) / sizeof(*targetCoordinates);
+    int robotOrientation; // holds orientation of the robot once it exits the tunnel and stops
 
     int actionHistory[4] = {SENTINEL_VALUE, SENTINEL_VALUE, SENTINEL_VALUE, SENTINEL_VALUE}; // stores history of actions
-
-    bool allServicingRobotsCollected = false;
 
     void obtainTargetCoordinates() {
       for (int i = 0; i < numCoordinates; i++) {
         int value = readPacket();
         targetCoordinates[i] = value;
       }
+    }
+
+    void obtainRobotOrientation() {
+      robotOrientation = readPacket();
     }
 
     void goForward() {
@@ -186,7 +201,7 @@ class Robot {
       rightMotor->setSpeed(LINE_FOLLOWING_SPEED);
       leftMotor->run(BACKWARD);
       rightMotor->run(BACKWARD);
-      delay(1000);
+      delay(MOVE_BACKWARD_TIME);
       stopMoving();
     }
 
@@ -324,11 +339,6 @@ class Robot {
           numIgnores = 1;
           // ignore for the junction
           break;
-
-        case TUNNEL_TO_FINISH:
-          numIgnores = 1;
-          // ignore for the junction
-          break;
       }
 
       if (state == START_TO_TUNNEL) {
@@ -422,19 +432,15 @@ class Robot {
           prevLeftSensor = true;
           prevRightSensor = true;
           
-          if (state == TUNNEL_TO_FINISH) {
-            ignoreRightDetector = true;
-          } else if (state == TUNNEL_TO_SERVICE) {
+          if (state == TUNNEL_TO_SERVICE) {
             ignoreLeftDetector = true;
           }
-          
+
           counter++;
+          sendMessage(String(counter));
         }
       }
-
-      // Note: may need different logic to handle when to stop depending on the state
-
-      stopMoving(); // presumably reached the end of tunnel
+      stopMoving(); // presumably reached the end
     }
 
     int getTheta(int x, int y) {
@@ -451,30 +457,24 @@ class Robot {
       return max((int) distance - DISTANCE_OFFSET, 0);
     }
 
-    bool requiresServicing() {
-      // to be implemented
-    }
-
-    void lightUpLED() {
-      // to be implemented
-    }
-
-    void moveRobotToDeadZone(int x, int y, int theta) {
+    void moveRobotToDeadZone(int x, int y) {
       if (y > Y_CENTRE) {
-        turnByAngle(-90);
+        turnByAngle(-90 - robotOrientation);
         actionHistory[0] = -90;
         moveForward(y - Y_CENTRE);
         actionHistory[1] = y - Y_CENTRE;
+        delay(500);
         turnByAngle(-90);
         actionHistory[2] = -90;
         moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
         actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET);
         
       } else if (y < Y_CENTRE) {
-        turnByAngle(90);
+        turnByAngle(90 - robotOrientation);
         actionHistory[0] = 90;
         moveForward(Y_CENTRE - y);
         actionHistory[1] = Y_CENTRE - y;
+        delay(500);
         turnByAngle(90);
         actionHistory[2] = 90;
         moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
@@ -488,12 +488,16 @@ class Robot {
       int y = targetCoordinates[coordinateCounter + 1];
       coordinateCounter += 2;
       int theta = getTheta(x, y);
+      sendMessage(String(robotOrientation));
+      sendMessage(String(theta));
+      sendMessage(String(theta - robotOrientation));
 
       if (abs(theta) > THETA_THRESHOLD) {
-        moveRobotToDeadZone(x, y, theta);
+        moveRobotToDeadZone(x, y);
       } else {
         int distance = getDistance(x, y);
-        turnByAngle(theta);
+        sendMessage(String(distance));
+        turnByAngle(theta - robotOrientation);
         actionHistory[0] = theta;
         moveForward(distance);
         actionHistory[1] = distance;
@@ -502,7 +506,6 @@ class Robot {
       /* Need to check whether it needs servicing or recharging */
       
       // Target should be in front of robot at this point
-      lightUpLED();
       openSweeper();
       delay(1500);
       collectRobot();
@@ -528,16 +531,18 @@ class Robot {
     }
 
     void collectRobot() {
-      turnByAngle(200);
+      turnByAngle(190);
       closeSweeper();
     }
 
     void goBackToTunnel() {
       if (actionHistory[3] != SENTINEL_VALUE) {
         moveForward(actionHistory[3]);
+        delay(500);
         turnByAngle(-1 * actionHistory[2]);
       }
       moveForward(actionHistory[1]);
+      delay(500);
       turnByAngle(-1 * actionHistory[0]);
 
       // Reset
@@ -558,6 +563,12 @@ class Robot {
       turnByAngle(190);
       delay(100);
     }
+
+    void goToFinish() {
+      turnByAngle(GO_TO_FINISH_ANGLE);
+      moveForward(GO_TO_FINISH_DISTANCE);
+      stopMoving();
+    }
      
   public:
     void start() {
@@ -568,11 +579,10 @@ class Robot {
       followLine();
       delay(1000);
 
-      for (int i = 0; i < numCoordinates / 2; i++) {
-        if (targetCoordinates[coordinateCounter] == 0) {
-          break;
-        }
-        
+      acknowledge();
+      obtainRobotOrientation();
+
+      for (int i = 0; i < numCoordinates / 2; i++) {        
         state = SEARCH;
         findRobot();
         
@@ -580,18 +590,20 @@ class Robot {
         goBackToTunnel();
         delay(1000);
 
-        if (i == numCoordinates / 2) {
+        state = TUNNEL_TO_SERVICE;
+        followLine();    
+        dropOffRobot();
+        
+        if (i == numCoordinates / 2 || targetCoordinates[coordinateCounter + 2] == 0) {
           state = TUNNEL_TO_FINISH;
-          followLine();
-          moveForward(75);
+          goToFinish();
+          return;
           
         } else {
-          state = TUNNEL_TO_SERVICE;
-          followLine();
-          dropOffRobot();
-          
           state = SERVICE_TO_TUNNEL;
           followLine();
+          acknowledge();
+          obtainRobotOrientation();
         }
       }
     }
@@ -607,6 +619,9 @@ const int Robot::Y_CENTRE;
 const int Robot::DISTANCE_OFFSET;
 const int Robot::THETA_THRESHOLD;
 const int Robot::SENTINEL_VALUE;
+const int Robot::MOVE_BACKWARD_TIME;
+const int Robot::GO_TO_FINISH_ANGLE;
+const int Robot::GO_TO_FINISH_DISTANCE;
 
 void setup() {
   AFMS.begin();
