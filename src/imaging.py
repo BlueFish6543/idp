@@ -76,7 +76,7 @@ class Image:
         mask = 255 * np.ones_like(bw)
         mask[:, :45] = 0
         mask[:, 600:] = 0
-        mask[255:420, 365:600] = 0
+        mask[255:425, 365:600] = 0
         bw = np.minimum(bw, mask)
 
         # Find all the contours in the threshold range
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     take_photo()
     src = cv2.imread(os.path.join(os.getcwd(), 'images', 'test.jpg'))
     assert src is not None
-    image = Image(copy.copy(src), threshold=2, num_colours=8, kernel_size=5)
+    image = Image(copy.copy(src), threshold=2, num_colours=8, kernel_size=7)
     image.draw_contours()
     centres = sort_coordinates(image.get_centres())
     print(centres)
