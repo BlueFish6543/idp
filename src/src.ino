@@ -30,9 +30,12 @@ Adafruit_DCMotor *rightMotor = AFMS.getMotor(2);
 Servo servo;
 
 /* Pins on the Arduino */
-int leftLineDetectorPin = A1; // to be changed
-int rightLineDetectorPin = A2; // to be changed
-int servoPin = 9; // to be changed
+int leftLineDetectorPin = A1;
+int rightLineDetectorPin = A2;
+int servoPin = 9;
+int amberLEDPin = 13;
+
+int amberLEDState = LOW;
 
 /* Connects to the phone's Wi-Fi hotspot. */
 void setupWiFi() {
@@ -163,6 +166,7 @@ class Robot {
     static const int MOVE_BACKWARD_TIME = 750; // milliseconds for moving backward after dropping off robot
     static const int GO_TO_FINISH_ANGLE = 3; // angle to turn when returning to finish
     static const int GO_TO_FINISH_DISTANCE = 600; // distance in pixels to move forward when returning to finish
+    static const int BLINK_INTERVAL = 250; // milliseconds between change in amber LED state
     
     State state; // current state of the robot
 
@@ -174,6 +178,8 @@ class Robot {
     int targetCoordinates[8]; // holds (x, y) coordinates of the targets, assume a maximum of 4 coordinates
     const int numCoordinates = 8;
     int robotOrientation; // holds orientation of the robot once it exits the tunnel and stops
+
+    unsigned long previousMillis = millis();
 
     int actionHistory[4] = {SENTINEL_VALUE, SENTINEL_VALUE, SENTINEL_VALUE, SENTINEL_VALUE}; // stores history of actions
 
@@ -187,7 +193,7 @@ class Robot {
     }
 
     void obtainRobotOrientation() {
-      robotOrientation = readPacket();
+      robotOrientation = readPacket();    
       sendMessage(String("Obtained orientation: "));
       sendMessage(String(robotOrientation));
     }
@@ -361,6 +367,8 @@ class Robot {
        *  of instances where both sensors return high.
        */
       while (counter <= numIgnores) {
+        updateLED();
+        
         if (ignoreLeftDetector && leftDetectorOnLine()) {
           turnRight();
           goForward();
@@ -391,6 +399,7 @@ class Robot {
           ignoreLeftDetector = false;
           ignoreRightDetector = false;
           counterStep += 1;
+          updateLED();
 
           if (!ignoreLeftDetector && leftDetectorOnLine()) {
             if (state == START_TO_TUNNEL || state == SERVICE_TO_TUNNEL) {
@@ -546,6 +555,20 @@ class Robot {
       delay(500);
     }
 
+    void updateLED() {
+      unsigned long currentMillis = millis();
+      if ((currentMillis - previousMillis) >= BLINK_INTERVAL) {
+        previousMillis = currentMillis;
+        
+        if (amberLEDState == LOW) {
+          amberLEDState = HIGH;
+        } else {
+          amberLEDState = LOW;
+        }
+        digitalWrite(amberLEDPin, amberLEDState);
+      }
+    }
+
     void goBackToTunnel() {
       if (actionHistory[3] != SENTINEL_VALUE) {
         moveForward(actionHistory[3]);
@@ -639,6 +662,7 @@ const int Robot::GO_TO_FINISH_DISTANCE;
 void setup() {
   AFMS.begin();
   servo.attach(servoPin);
+  pinMode(amberLEDPin, OUTPUT);
   Serial.begin(9600);
   setupWiFi();
 }
