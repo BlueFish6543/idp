@@ -324,6 +324,7 @@ class Robot {
       /* This function should handle the entire line following process from start to finish. */
       int numIgnores;
       int counter = 0;
+      int counterStep = 0;
       prevLeftSensor = false;
       prevRightSensor = false;
       bool ignoreLeftDetector = false;
@@ -389,6 +390,7 @@ class Robot {
 
           ignoreLeftDetector = false;
           ignoreRightDetector = false;
+          counterStep += 1;
 
           if (!ignoreLeftDetector && leftDetectorOnLine()) {
             if (state == START_TO_TUNNEL || state == SERVICE_TO_TUNNEL) {
@@ -441,8 +443,11 @@ class Robot {
             ignoreLeftDetector = true;
           }
 
-          counter++;
-          sendMessage(String(counter));
+          if (counterStep > 50) {
+            counter++;
+            counterStep = 0;
+            sendMessage(String(counter));
+          }
         }
       }
       stopMoving(); // presumably reached the end
@@ -580,10 +585,10 @@ class Robot {
      
   public:
     void start() {
-      acknowledge();
-      obtainTargetCoordinates();
+//      acknowledge();
+//      obtainTargetCoordinates();
       
-      state = START_TO_TUNNEL;
+      state = TUNNEL_TO_SERVICE;
       followLine();
       delay(1000);
 
@@ -602,7 +607,7 @@ class Robot {
         followLine();    
         dropOffRobot();
 
-        if (i == numCoordinates / 2 || targetCoordinates[coordinateCounter + 2] == 0) {
+        if ((i == (numCoordinates / 2) - 1) || (targetCoordinates[coordinateCounter] == 0)) {
           state = TUNNEL_TO_FINISH;
           goToFinish();
           return;
