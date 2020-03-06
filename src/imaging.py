@@ -107,7 +107,6 @@ class Image:
             mask = 255 * np.ones_like(bw)
             mask[:, :45] = 0
             mask[:, 600:] = 0
-            mask[:600, :] = 0
             mask[255:425, 365:600] = 0
             bw = np.minimum(bw, mask)
         

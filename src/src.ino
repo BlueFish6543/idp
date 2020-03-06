@@ -199,12 +199,12 @@ class Robot {
       rightMotor->run(FORWARD);
     }
 
-    void moveBackward() {
+    void moveBackward(int delayTime) {
       leftMotor->setSpeed(LINE_FOLLOWING_SPEED);
       rightMotor->setSpeed(LINE_FOLLOWING_SPEED);
       leftMotor->run(BACKWARD);
       rightMotor->run(BACKWARD);
-      delay(MOVE_BACKWARD_TIME);
+      delay(delayTime);
       stopMoving();
     }
 
@@ -552,7 +552,7 @@ class Robot {
       turnByAngle(-1 * actionHistory[0]);
 
       // Reset
-      for (int i = 0; i < 3; i++) {
+      for (int i = 0; i < 4; i++) {
         actionHistory[i] = SENTINEL_VALUE;
       }
     }
@@ -561,9 +561,11 @@ class Robot {
       turnByAngle(190);
       delay(1000);
       openSweeper();
+      moveBackward(MOVE_BACKWARD_TIME);
+      moveForward(50);
       delay(1000);
       turnByAngle(-190);
-      moveBackward();
+      moveBackward(MOVE_BACKWARD_TIME);
       closeSweeper();
       delay(500);
       turnByAngle(190);
@@ -601,7 +603,6 @@ class Robot {
         dropOffRobot();
 
         if (i == numCoordinates / 2 || targetCoordinates[coordinateCounter + 2] == 0) {
-          sendMessage(String(targetCoordinates[coordinateCounter + 2]));
           state = TUNNEL_TO_FINISH;
           goToFinish();
           return;
