@@ -151,7 +151,7 @@ class Robot {
     static const int MOVE_FORWARD_CALIBRATION_CONSTANT = 6000; // milliseconds to traverse half the table = 360 pixels
     static const long TURN_CALIBRATION_CONSTANT = 4635; // milliseconds to make a complete revolution
     static const int NORMAL_MOTOR_SPEED = 200; // maximum possible value is 255
-    static const int LINE_FOLLOWING_SPEED = 150; // for line following
+    static const int LINE_FOLLOWING_SPEED = 100; // for line following
     static const int TURN_DELAY = 100; // during line following, each turnLeft or turnRight command executes by this number of milliseconds
     int LEFT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold
     int RIGHT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold

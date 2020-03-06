@@ -158,7 +158,7 @@ def send_centres(sock, centres):
     
     if len(np.nditer(centres)) < 8:
         n = 8 - len(np.nditer(centres))
-        for i in range(6):
+        for i in range(n):
             time.sleep(0)
             message = '0'
             sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
