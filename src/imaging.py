@@ -107,6 +107,7 @@ class Image:
             mask = 255 * np.ones_like(bw)
             mask[:, :45] = 0
             mask[:, 600:] = 0
+            mask[:600, :] = 0
             mask[255:425, 365:600] = 0
             bw = np.minimum(bw, mask)
         
@@ -150,17 +151,19 @@ class Image:
 def send_centres(sock, centres):
     for (i, coordinate) in enumerate(np.nditer(centres)):
         if (i == 8):
-            return
+            break
         # In the order x1, y1, x2, y2 etc.
         time.sleep(0.5)
         message = str(coordinate)
+        print(message)
         sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
     
-    if len(np.nditer(centres)) < 8:
-        n = 8 - len(np.nditer(centres))
+    if centres.size < 8:
+        n = 8 - centres.size
         for i in range(n):
-            time.sleep(0)
+            time.sleep(0.5)
             message = '0'
+            print(i, message)
             sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
 
 def send_angle(sock, angle):
@@ -177,7 +180,7 @@ def receive_data(sock):
             break
 
 def dist(x, y):
-    x_centre = 378
+    x_centre = 395
     y_centre = 340
     return np.sqrt((x - x_centre) ** 2 + (y - y_centre) ** 2)
 
@@ -213,7 +216,7 @@ if __name__ == '__main__':
         print(image.angles)
         angles = np.asarray(image.angles)
         if list(angles):
-            angle = int(angles[np.argmin(np.abs(angles))])
+            angle = int(round(angles[np.argmin(np.abs(angles))]))
             print(angle)
         else:
             angle = 0

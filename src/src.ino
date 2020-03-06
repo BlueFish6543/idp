@@ -109,7 +109,6 @@ int readPacket() {
       int value = atoi(packetBuffer);
       Serial.println("Contents:");
       Serial.println(value);
-      sendMessage(String(value));
   
       return value;
     }
@@ -151,14 +150,14 @@ class Robot {
     static const int MOVE_FORWARD_CALIBRATION_CONSTANT = 6000; // milliseconds to traverse half the table = 360 pixels
     static const long TURN_CALIBRATION_CONSTANT = 4635; // milliseconds to make a complete revolution
     static const int NORMAL_MOTOR_SPEED = 200; // maximum possible value is 255
-    static const int LINE_FOLLOWING_SPEED = 100; // for line following
+    static const int LINE_FOLLOWING_SPEED = 120; // for line following
     static const int TURN_DELAY = 100; // during line following, each turnLeft or turnRight command executes by this number of milliseconds
     int LEFT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold
     int RIGHT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold
     static const int ADAPTIVE_THRESHOLD_OFFSET = 200; // for adaptive thresholding for line following, currently not used
-    static const int X_CENTRE = 378; // hardcoded value of x coordinate of the end of the tunnel
+    static const int X_CENTRE = 395; // hardcoded value of x coordinate of the end of the tunnel
     static const int Y_CENTRE = 340; // hardcoded value of y coordinate of the end of the tunnel
-    static const int DISTANCE_OFFSET = 90; // robot should stop this number of pixels from the target
+    static const int DISTANCE_OFFSET = 82; // robot should stop this number of pixels from the target
     static const int THETA_THRESHOLD = 100; // robot uses a different algorithm to move towards target if theta is above this
     static const int SENTINEL_VALUE = -1000; // sentinel value for out-of-range data
     static const int MOVE_BACKWARD_TIME = 750; // milliseconds for moving backward after dropping off robot
@@ -173,7 +172,7 @@ class Robot {
     int coordinateCounter = 0; // which coordinate (i.e. target) the robot is currently finding
 
     int targetCoordinates[8]; // holds (x, y) coordinates of the targets, assume a maximum of 4 coordinates
-    const int numCoordinates = sizeof(targetCoordinates) / sizeof(*targetCoordinates);
+    const int numCoordinates = 8;
     int robotOrientation; // holds orientation of the robot once it exits the tunnel and stops
 
     int actionHistory[4] = {SENTINEL_VALUE, SENTINEL_VALUE, SENTINEL_VALUE, SENTINEL_VALUE}; // stores history of actions
@@ -181,12 +180,16 @@ class Robot {
     void obtainTargetCoordinates() {
       for (int i = 0; i < numCoordinates; i++) {
         int value = readPacket();
+        sendMessage(String("Obtained coordinate: "));
+        sendMessage(String(value));
         targetCoordinates[i] = value;
       }
     }
 
     void obtainRobotOrientation() {
       robotOrientation = readPacket();
+      sendMessage(String("Obtained orientation: "));
+      sendMessage(String(robotOrientation));
     }
 
     void goForward() {
@@ -277,6 +280,8 @@ class Robot {
 
     void turnByAngle(int angle) {
       // turns robot by set angle, angle can be positive or negative
+      sendMessage(String("Turning: "));
+      sendMessage(String(angle));
       long delayTime = TURN_CALIBRATION_CONSTANT * (long) abs(angle) / 360L;
       if (angle > 0) {
         turnRightDouble();
@@ -531,8 +536,9 @@ class Robot {
     }
 
     void collectRobot() {
-      turnByAngle(190);
+      turnByAngle(193);
       closeSweeper();
+      delay(500);
     }
 
     void goBackToTunnel() {
@@ -582,7 +588,7 @@ class Robot {
       acknowledge();
       obtainRobotOrientation();
 
-      for (int i = 0; i < numCoordinates / 2; i++) {        
+      for (int i = 0; i < numCoordinates / 2; i++) {
         state = SEARCH;
         findRobot();
         
@@ -593,8 +599,9 @@ class Robot {
         state = TUNNEL_TO_SERVICE;
         followLine();    
         dropOffRobot();
-        
+
         if (i == numCoordinates / 2 || targetCoordinates[coordinateCounter + 2] == 0) {
+          sendMessage(String(targetCoordinates[coordinateCounter + 2]));
           state = TUNNEL_TO_FINISH;
           goToFinish();
           return;
