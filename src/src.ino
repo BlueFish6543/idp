@@ -6,7 +6,7 @@
 #include <WiFiNINA.h>
 #include <WiFiUdp.h>
 
-/* Wi-Fi information for the phone's hotspost to which the Arduino
+/* Wi-Fi information for the phone's hotspot to which the Arduino
  *  and the computer are connected to.
  */
 int status = WL_IDLE_STATUS;
@@ -161,7 +161,7 @@ class Robot {
     static const int THETA_THRESHOLD = 100; // robot uses a different algorithm to move towards target if theta is above this
     static const int SENTINEL_VALUE = -1000; // sentinel value for out-of-range data
     static const int MOVE_BACKWARD_TIME = 750; // milliseconds for moving backward after dropping off robot
-    static const int GO_TO_FINISH_ANGLE = 3; // angle to turn when returning to finish
+    static const int GO_TO_FINISH_ANGLE = 2; // angle to turn when returning to finish
     static const int GO_TO_FINISH_DISTANCE = 600; // distance in pixels to move forward when returning to finish
     
     State state; // current state of the robot
