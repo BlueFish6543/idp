@@ -210,7 +210,10 @@ class Robot {
       rightMotor->setSpeed(LINE_FOLLOWING_SPEED);
       leftMotor->run(BACKWARD);
       rightMotor->run(BACKWARD);
-      delay(delayTime);
+      int startTime = millis();
+      while ((millis() - startTime) < delayTime) {
+        updateLED();
+      }
       stopMoving();
     }
 
@@ -225,7 +228,10 @@ class Robot {
       // distance in pixels
       long delayTime = (long) MOVE_FORWARD_CALIBRATION_CONSTANT * (long) distance / 360L;
       goForwardQuick();
-      delay(delayTime);      
+      int startTime = millis();
+      while ((millis() - startTime) < delayTime) {
+        updateLED();
+      }
       stopMoving();
     }
 
@@ -291,11 +297,17 @@ class Robot {
       long delayTime = TURN_CALIBRATION_CONSTANT * (long) abs(angle) / 360L;
       if (angle > 0) {
         turnRightDouble();
-        delay(delayTime);
+        int startTime = millis();
+        while ((millis() - startTime) < delayTime) {
+          updateLED();
+        }
         stopMoving();
       } else if (angle < 0) {
         turnLeftDouble();
-        delay(delayTime);
+        int startTime = millis();
+        while ((millis() - startTime) < delayTime) {
+          updateLED();
+        }
         stopMoving();
       }
     }
@@ -525,6 +537,7 @@ class Robot {
       /* Need to check whether it needs servicing or recharging */
       
       // Target should be in front of robot at this point
+      digitalWrite(amberLEDPin, HIGH);
       openSweeper();
       delay(1500);
       collectRobot();
