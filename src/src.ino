@@ -363,13 +363,13 @@ class Robot {
       while (counter <= numIgnores) {
         if (ignoreLeftDetector && leftDetectorOnLine()) {
           turnRight();
-          goForward();
+          goForwardQuick();
           continue;
         }
 
         if (ignoreRightDetector && rightDetectorOnLine()) {
           turnLeft();
-          goForward();
+          goForwardQuick();
           continue;
         }
         
@@ -398,8 +398,7 @@ class Robot {
             } else {
               turnLeft();
             }
-            turnLeft();
-            goForward();
+            goForwardQuick();
             prevLeftSensor = true;
             prevRightSensor = false;
             continue;
@@ -411,7 +410,7 @@ class Robot {
             } else {
               turnRight();
             }
-            goForward();
+            goForwardQuick();
             prevLeftSensor = false;
             prevRightSensor = true;
             continue;
@@ -473,7 +472,7 @@ class Robot {
         actionHistory[0] = -90;
         moveForward(y - Y_CENTRE);
         actionHistory[1] = y - Y_CENTRE;
-        delay(500);
+        delay(200);
         turnByAngle(-90);
         actionHistory[2] = -90;
         moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
@@ -484,7 +483,7 @@ class Robot {
         actionHistory[0] = 90;
         moveForward(Y_CENTRE - y);
         actionHistory[1] = Y_CENTRE - y;
-        delay(500);
+        delay(200);
         turnByAngle(90);
         actionHistory[2] = 90;
         moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
@@ -517,9 +516,9 @@ class Robot {
       
       // Target should be in front of robot at this point
       openSweeper();
-      delay(1500);
+      delay(500);
       collectRobot();
-      delay(1500);
+      delay(500);
     }
 
     void openSweeper() {
@@ -543,17 +542,16 @@ class Robot {
     void collectRobot() {
       turnByAngle(193);
       closeSweeper();
-      delay(500);
     }
 
     void goBackToTunnel() {
       if (actionHistory[3] != SENTINEL_VALUE) {
         moveForward(actionHistory[3]);
-        delay(500);
+        delay(200);
         turnByAngle(-1 * actionHistory[2]);
       }
       moveForward(actionHistory[1]);
-      delay(500);
+      delay(200);
       turnByAngle(-1 * actionHistory[0]);
 
       // Reset
@@ -564,15 +562,15 @@ class Robot {
 
     void dropOffRobot() {
       turnByAngle(190);
-      delay(1000);
+      delay(200);
       openSweeper();
       moveBackward(MOVE_BACKWARD_TIME);
       moveForward(50);
-      delay(1000);
+      delay(200);
       turnByAngle(-190);
       moveBackward(MOVE_BACKWARD_TIME);
       closeSweeper();
-      delay(500);
+      delay(200);
       turnByAngle(190);
       delay(100);
     }
@@ -590,7 +588,6 @@ class Robot {
       
       state = START_TO_TUNNEL;
       followLine();
-      delay(1000);
 
       acknowledge();
       obtainRobotOrientation();
@@ -601,7 +598,7 @@ class Robot {
         
         state = RETURN_TO_TUNNEL;
         goBackToTunnel();
-        delay(1000);
+        delay(500);
 
         state = TUNNEL_TO_SERVICE;
         followLine();    

@@ -152,7 +152,7 @@ def send_centres(sock, centres):
         if (i == 8):
             break
         # In the order x1, y1, x2, y2 etc.
-        time.sleep(0.5)
+        time.sleep(0.1)
         message = str(coordinate)
         print(message)
         sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
@@ -160,13 +160,13 @@ def send_centres(sock, centres):
     if centres.size < 8:
         n = 8 - centres.size
         for i in range(n):
-            time.sleep(0.5)
+            time.sleep(0.1)
             message = '0'
             print(i, message)
             sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
 
 def send_angle(sock, angle):
-    time.sleep(0.5)
+    time.sleep(0.1)
     message = str(angle)
     print(message)
     sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
