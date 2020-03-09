@@ -585,10 +585,10 @@ class Robot {
      
   public:
     void start() {
-//      acknowledge();
-//      obtainTargetCoordinates();
+      acknowledge();
+      obtainTargetCoordinates();
       
-      state = TUNNEL_TO_SERVICE;
+      state = START_TO_TUNNEL;
       followLine();
       delay(1000);
 
