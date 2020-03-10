@@ -153,7 +153,7 @@ class Robot {
     static const int MOVE_FORWARD_CALIBRATION_CONSTANT = 6000; // milliseconds to traverse half the table = 360 pixels
     static const long TURN_CALIBRATION_CONSTANT = 4635; // milliseconds to make a complete revolution
     static const int NORMAL_MOTOR_SPEED = 200; // maximum possible value is 255
-    static const int LINE_FOLLOWING_SPEED = 120; // for line following
+    static const int LINE_FOLLOWING_SPEED = 175; // for line following
     static const int TURN_DELAY = 100; // during line following, each turnLeft or turnRight command executes by this number of milliseconds
     int LEFT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold
     int RIGHT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold
@@ -342,7 +342,7 @@ class Robot {
       /* This function should handle the entire line following process from start to finish. */
       int numIgnores;
       int counter = 0;
-      int counterStep = 0;
+      int counterStep = 50;
       prevLeftSensor = false;
       prevRightSensor = false;
       bool ignoreLeftDetector = false;
@@ -383,13 +383,13 @@ class Robot {
         
         if (ignoreLeftDetector && leftDetectorOnLine()) {
           turnRight();
-          goForward();
+          goForwardQuick();
           continue;
         }
 
         if (ignoreRightDetector && rightDetectorOnLine()) {
           turnLeft();
-          goForward();
+          goForwardQuick();
           continue;
         }
         
@@ -419,8 +419,7 @@ class Robot {
             } else {
               turnLeft();
             }
-            turnLeft();
-            goForward();
+            goForwardQuick();
             prevLeftSensor = true;
             prevRightSensor = false;
             continue;
@@ -432,7 +431,7 @@ class Robot {
             } else {
               turnRight();
             }
-            goForward();
+            goForwardQuick();
             prevLeftSensor = false;
             prevRightSensor = true;
             continue;
@@ -462,6 +461,8 @@ class Robot {
           
           if (state == TUNNEL_TO_SERVICE) {
             ignoreLeftDetector = true;
+          } else if (state == SERVICE_TO_TUNNEL) {
+            ignoreRightDetector = true;
           }
 
           if (counterStep > 50) {
@@ -494,7 +495,7 @@ class Robot {
         actionHistory[0] = -90;
         moveForward(y - Y_CENTRE);
         actionHistory[1] = y - Y_CENTRE;
-        delay(500);
+        delay(200);
         turnByAngle(-90);
         actionHistory[2] = -90;
         moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
@@ -505,7 +506,7 @@ class Robot {
         actionHistory[0] = 90;
         moveForward(Y_CENTRE - y);
         actionHistory[1] = Y_CENTRE - y;
-        delay(500);
+        delay(200);
         turnByAngle(90);
         actionHistory[2] = 90;
         moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
@@ -539,9 +540,9 @@ class Robot {
       // Target should be in front of robot at this point
       digitalWrite(amberLEDPin, HIGH);
       openSweeper();
-      delay(1500);
+      delay(500);
       collectRobot();
-      delay(1500);
+      delay(500);
     }
 
     void openSweeper() {
@@ -565,7 +566,6 @@ class Robot {
     void collectRobot() {
       turnByAngle(193);
       closeSweeper();
-      delay(500);
     }
 
     void updateLED() {
@@ -585,11 +585,11 @@ class Robot {
     void goBackToTunnel() {
       if (actionHistory[3] != SENTINEL_VALUE) {
         moveForward(actionHistory[3]);
-        delay(500);
+        delay(200);
         turnByAngle(-1 * actionHistory[2]);
       }
       moveForward(actionHistory[1]);
-      delay(500);
+      delay(200);
       turnByAngle(-1 * actionHistory[0]);
 
       // Reset
@@ -600,15 +600,15 @@ class Robot {
 
     void dropOffRobot() {
       turnByAngle(190);
-      delay(1000);
+      delay(200);
       openSweeper();
       moveBackward(MOVE_BACKWARD_TIME);
       moveForward(50);
-      delay(1000);
+      delay(200);
       turnByAngle(-190);
       moveBackward(MOVE_BACKWARD_TIME);
       closeSweeper();
-      delay(500);
+      delay(200);
       turnByAngle(190);
       delay(100);
     }
@@ -626,7 +626,6 @@ class Robot {
       
       state = START_TO_TUNNEL;
       followLine();
-      delay(1000);
 
       acknowledge();
       obtainRobotOrientation();
@@ -637,7 +636,7 @@ class Robot {
         
         state = RETURN_TO_TUNNEL;
         goBackToTunnel();
-        delay(1000);
+        delay(200);
 
         state = TUNNEL_TO_SERVICE;
         followLine();    
