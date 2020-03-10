@@ -2,6 +2,7 @@ import copy
 import os
 import socket
 import time
+import subprocess
 import cv2
 import numpy as np
 
@@ -189,7 +190,22 @@ def sort_coordinates(centres):
     return np.asarray(centres)
 
 def take_photo():
-    os.system("ffmpeg -f video4linux2 -s 960x720 -i /dev/video4 -ss 0:0:1 -frames 1 ./images/test.jpg -y")
+    p = subprocess.Popen(['ffmpeg', '-f', 'video4linux2', '-s', '960x720', '-i', '/dev/video4', '-ss', '0:0:1', '-frames', '1', './images/test.jpg', '-y'],
+                         stdout=subprocess.PIPE)
+    wait_timeout(p, 5)
+
+def wait_timeout(proc, seconds):
+    start = time.time()
+    end = start + seconds
+    interval = min(seconds / 1000.0, .25)
+
+    while True:
+        result = proc.poll()
+        if result is not None:
+            return
+        if time.time() >= end:
+            return
+        time.sleep(interval)
 
 def process_image(threshold, num_colours, kernel_size, find_targets):
     take_photo()

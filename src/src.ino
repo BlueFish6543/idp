@@ -368,8 +368,8 @@ class Robot {
         }
 
         if (ignoreRightDetector && rightDetectorOnLine()) {
-          turnLeft();
-          goForwardQuick();
+          turnLeftSingle();
+          goForward();
           continue;
         }
         
@@ -393,7 +393,7 @@ class Robot {
           counterStep += 1;
 
           if (!ignoreLeftDetector && leftDetectorOnLine()) {
-            if (state == START_TO_TUNNEL || state == SERVICE_TO_TUNNEL) {
+            if (state == START_TO_TUNNEL) {
               turnLeftSingle();
             } else {
               turnLeft();
@@ -405,7 +405,7 @@ class Robot {
           }
           
           if (!ignoreRightDetector && rightDetectorOnLine()) {
-            if (state == START_TO_TUNNEL || state == SERVICE_TO_TUNNEL) {
+            if (state == START_TO_TUNNEL) {
               turnRightSingle();
             } else {
               turnRight();
@@ -472,8 +472,8 @@ class Robot {
       if (y > Y_CENTRE) {
         turnByAngle(-90 - robotOrientation);
         actionHistory[0] = -90;
-        moveForward(y - Y_CENTRE);
-        actionHistory[1] = y - Y_CENTRE;
+        moveForward(y - Y_CENTRE + 15);
+        actionHistory[1] = y - Y_CENTRE + 15;
         delay(200);
         turnByAngle(-90);
         actionHistory[2] = -90;
@@ -483,8 +483,8 @@ class Robot {
       } else if (y < Y_CENTRE) {
         turnByAngle(90 - robotOrientation);
         actionHistory[0] = 90;
-        moveForward(Y_CENTRE - y);
-        actionHistory[1] = Y_CENTRE - y;
+        moveForward(Y_CENTRE - y + 15);
+        actionHistory[1] = Y_CENTRE - y + 15;
         delay(200);
         turnByAngle(90);
         actionHistory[2] = 90;
