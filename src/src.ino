@@ -35,6 +35,7 @@ int rightLineDetectorPin = A2;
 int servoPin = 9;
 int amberLEDPin = 13;
 
+
 int amberLEDState = LOW;
 
 /* Connects to the phone's Wi-Fi hotspot. */
@@ -620,7 +621,7 @@ class Robot {
     }
      
   public:
-    void start() {
+    void start() {      
       acknowledge();
       obtainTargetCoordinates();
       
