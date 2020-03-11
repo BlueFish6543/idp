@@ -108,7 +108,6 @@ class Image:
             mask = 255 * np.ones_like(bw)
             mask[:, :45] = 0
             mask[:, 600:] = 0
-            mask[:550, :] = 0
             mask[255:425, 365:600] = 0
             bw = np.minimum(bw, mask)
         
@@ -194,7 +193,7 @@ def take_photo():
     for i in range(3):
         p = subprocess.Popen(['ffmpeg', '-f', 'video4linux2', '-s', '960x720', '-i', '/dev/video4', '-ss', '0:0:1', '-frames', '1', './images/test.jpg', '-y'],
                              stdout=subprocess.PIPE)
-        result = wait_timeout(p, 5)
+        result = wait_timeout(p, 8)
         if result:
             return
         p.kill()

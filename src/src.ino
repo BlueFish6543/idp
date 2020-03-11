@@ -477,8 +477,8 @@ class Robot {
         delay(200);
         turnByAngle(-90);
         actionHistory[2] = -90;
-        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
-        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET);
+        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET - 10));
+        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET - 10);
         
       } else if (y < Y_CENTRE) {
         turnByAngle(90 - robotOrientation);
@@ -488,8 +488,8 @@ class Robot {
         delay(200);
         turnByAngle(90);
         actionHistory[2] = 90;
-        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
-        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET);
+        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET - 10));
+        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET - 10);
       }
     }
 
