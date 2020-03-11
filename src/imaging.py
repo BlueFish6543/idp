@@ -108,6 +108,7 @@ class Image:
             mask = 255 * np.ones_like(bw)
             mask[:, :45] = 0
             mask[:, 600:] = 0
+            mask[:550, :] = 0
             mask[255:425, 365:600] = 0
             bw = np.minimum(bw, mask)
         
@@ -190,9 +191,13 @@ def sort_coordinates(centres):
     return np.asarray(centres)
 
 def take_photo():
-    p = subprocess.Popen(['ffmpeg', '-f', 'video4linux2', '-s', '960x720', '-i', '/dev/video4', '-ss', '0:0:1', '-frames', '1', './images/test.jpg', '-y'],
-                         stdout=subprocess.PIPE)
-    wait_timeout(p, 5)
+    for i in range(3):
+        p = subprocess.Popen(['ffmpeg', '-f', 'video4linux2', '-s', '960x720', '-i', '/dev/video4', '-ss', '0:0:1', '-frames', '1', './images/test.jpg', '-y'],
+                             stdout=subprocess.PIPE)
+        result = wait_timeout(p, 5)
+        if result:
+            return
+        p.kill()
 
 def wait_timeout(proc, seconds):
     start = time.time()
@@ -202,9 +207,9 @@ def wait_timeout(proc, seconds):
     while True:
         result = proc.poll()
         if result is not None:
-            return
+            return True
         if time.time() >= end:
-            return
+            return False
         time.sleep(interval)
 
 def process_image(threshold, num_colours, kernel_size, find_targets):
