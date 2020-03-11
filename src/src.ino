@@ -161,7 +161,7 @@ class Robot {
     static const int THETA_THRESHOLD = 100; // robot uses a different algorithm to move towards target if theta is above this
     static const int SENTINEL_VALUE = -1000; // sentinel value for out-of-range data
     static const int MOVE_BACKWARD_TIME = 750; // milliseconds for moving backward after dropping off robot
-    static const int GO_TO_FINISH_ANGLE = 2; // angle to turn when returning to finish
+    static const int GO_TO_FINISH_ANGLE = 3; // angle to turn when returning to finish
     static const int GO_TO_FINISH_DISTANCE = 600; // distance in pixels to move forward when returning to finish
     
     State state; // current state of the robot
@@ -465,6 +465,9 @@ class Robot {
       long distanceSquared = pow((long) X_CENTRE - x, 2) + pow((long) Y_CENTRE - y, 2);
       long distance = sqrt(distanceSquared);
       Serial.println(distance);
+      if (distance > 325) {
+        distance += 15;
+      }
       return max((int) distance - DISTANCE_OFFSET, 0);
     }
 
@@ -477,8 +480,8 @@ class Robot {
         delay(200);
         turnByAngle(-94);
         actionHistory[2] = -94;
-        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
-        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET);
+        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET - 5));
+        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET - 5);
         
       } else if (y < Y_CENTRE) {
         turnByAngle(94 - robotOrientation);
@@ -488,8 +491,8 @@ class Robot {
         delay(200);
         turnByAngle(94);
         actionHistory[2] = 94;
-        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
-        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET);
+        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET - 5));
+        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET - 5);
       }
     }
 
