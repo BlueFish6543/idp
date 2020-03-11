@@ -161,7 +161,7 @@ class Robot {
     static const int THETA_THRESHOLD = 100; // robot uses a different algorithm to move towards target if theta is above this
     static const int SENTINEL_VALUE = -1000; // sentinel value for out-of-range data
     static const int MOVE_BACKWARD_TIME = 750; // milliseconds for moving backward after dropping off robot
-    static const int GO_TO_FINISH_ANGLE = 3; // angle to turn when returning to finish
+    static const int GO_TO_FINISH_ANGLE = 4; // angle to turn when returning to finish
     static const int GO_TO_FINISH_DISTANCE = 600; // distance in pixels to move forward when returning to finish
     
     State state; // current state of the robot
@@ -466,33 +466,33 @@ class Robot {
       long distance = sqrt(distanceSquared);
       Serial.println(distance);
       if (distance > 325) {
-        distance += 15;
+        distance += 5;
       }
       return max((int) distance - DISTANCE_OFFSET, 0);
     }
 
     void moveRobotToDeadZone(int x, int y) {
       if (y > Y_CENTRE) {
-        turnByAngle(-94 - robotOrientation);
-        actionHistory[0] = -94;
+        turnByAngle(-90 - robotOrientation);
+        actionHistory[0] = -90;
         moveForward(y - Y_CENTRE + 15);
         actionHistory[1] = y - Y_CENTRE + 15;
         delay(200);
-        turnByAngle(-94);
-        actionHistory[2] = -94;
-        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET - 5));
-        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET - 5);
+        turnByAngle(-90);
+        actionHistory[2] = -90;
+        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET - 20));
+        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET - 20);
         
       } else if (y < Y_CENTRE) {
-        turnByAngle(94 - robotOrientation);
-        actionHistory[0] = 94;
+        turnByAngle(90 - robotOrientation);
+        actionHistory[0] = 90;
         moveForward(Y_CENTRE - y + 15);
         actionHistory[1] = Y_CENTRE - y + 15;
         delay(200);
-        turnByAngle(94);
-        actionHistory[2] = 94;
-        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET - 5));
-        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET - 5);
+        turnByAngle(90);
+        actionHistory[2] = 90;
+        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET - 20));
+        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET - 20);
       }
     }
 

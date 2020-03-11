@@ -6,7 +6,7 @@ import subprocess
 import cv2
 import numpy as np
 
-UDP_IP = "192.168.43.225"
+UDP_IP = "192.168.43.198"
 IP_ADDR = "192.168.43.170"
 UDP_PORT = 2390
 
@@ -108,7 +108,6 @@ class Image:
             mask = 255 * np.ones_like(bw)
             mask[:, :45] = 0
             mask[:, 600:] = 0
-            mask[250:, :] = 0
             mask[255:425, 365:600] = 0
             bw = np.minimum(bw, mask)
         
