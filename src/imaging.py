@@ -180,7 +180,7 @@ def receive_data(sock):
             break
 
 def dist(x, y):
-    x_centre = 395
+    x_centre = 389
     y_centre = 340
     return np.sqrt((x - x_centre) ** 2 + (y - y_centre) ** 2)
 

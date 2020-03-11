@@ -155,7 +155,7 @@ class Robot {
     int LEFT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold
     int RIGHT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold
     static const int ADAPTIVE_THRESHOLD_OFFSET = 200; // for adaptive thresholding for line following, currently not used
-    static const int X_CENTRE = 395; // hardcoded value of x coordinate of the end of the tunnel
+    static const int X_CENTRE = 389; // hardcoded value of x coordinate of the end of the tunnel
     static const int Y_CENTRE = 340; // hardcoded value of y coordinate of the end of the tunnel
     static const int DISTANCE_OFFSET = 82; // robot should stop this number of pixels from the target
     static const int THETA_THRESHOLD = 100; // robot uses a different algorithm to move towards target if theta is above this
@@ -470,26 +470,26 @@ class Robot {
 
     void moveRobotToDeadZone(int x, int y) {
       if (y > Y_CENTRE) {
-        turnByAngle(-90 - robotOrientation);
-        actionHistory[0] = -90;
+        turnByAngle(-94 - robotOrientation);
+        actionHistory[0] = -94;
         moveForward(y - Y_CENTRE + 15);
         actionHistory[1] = y - Y_CENTRE + 15;
         delay(200);
-        turnByAngle(-90);
-        actionHistory[2] = -90;
-        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET - 10));
-        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET - 10);
+        turnByAngle(-94);
+        actionHistory[2] = -94;
+        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
+        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET);
         
       } else if (y < Y_CENTRE) {
-        turnByAngle(90 - robotOrientation);
-        actionHistory[0] = 90;
+        turnByAngle(94 - robotOrientation);
+        actionHistory[0] = 94;
         moveForward(Y_CENTRE - y + 15);
         actionHistory[1] = Y_CENTRE - y + 15;
         delay(200);
-        turnByAngle(90);
-        actionHistory[2] = 90;
-        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET - 10));
-        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET - 10);
+        turnByAngle(94);
+        actionHistory[2] = 94;
+        moveForward(max(0, x - X_CENTRE - DISTANCE_OFFSET));
+        actionHistory[3] = max(0, x - X_CENTRE - DISTANCE_OFFSET);
       }
     }
 
@@ -542,7 +542,7 @@ class Robot {
     }
 
     void collectRobot() {
-      turnByAngle(193);
+      turnByAngle(194);
       closeSweeper();
     }
 
@@ -555,7 +555,7 @@ class Robot {
       moveForward(actionHistory[1]);
       delay(200);
       turnByAngle(-1 * actionHistory[0]);
-
+      
       // Reset
       for (int i = 0; i < 4; i++) {
         actionHistory[i] = SENTINEL_VALUE;
