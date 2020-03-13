@@ -18,6 +18,7 @@ int keyIndex = 0; // (needed only for WEP)
 unsigned int localPort = 2390;
 IPAddress ip(192, 168, 43, 170);
 
+/* Buffer to hold received messages */
 char packetBuffer[255];
 
 WiFiUDP Udp;
@@ -30,9 +31,9 @@ Adafruit_DCMotor *rightMotor = AFMS.getMotor(2);
 Servo servo;
 
 /* Pins on the Arduino */
-int leftLineDetectorPin = A1; // to be changed
-int rightLineDetectorPin = A2; // to be changed
-int servoPin = 9; // to be changed
+int leftLineDetectorPin = A1;
+int rightLineDetectorPin = A2;
+int servoPin = 9;
 
 /* Connects to the phone's Wi-Fi hotspot. */
 void setupWiFi() {
@@ -125,6 +126,7 @@ void acknowledge() {
   Udp.endPacket();
 }
 
+/* Sends messages from the Arduino to the computer for debugging purposes. */
 void sendMessage(String message) {
   char charMessage[1024];
   message.toCharArray(charMessage, 1024);
@@ -148,13 +150,13 @@ class Robot {
 
     // Constants
     static const int MOVE_FORWARD_CALIBRATION_CONSTANT = 6000; // milliseconds to traverse half the table = 360 pixels
-    static const long TURN_CALIBRATION_CONSTANT = 4635; // milliseconds to make a complete revolution
+    static const long TURN_CALIBRATION_CONSTANT = 4635; // milliseconds to make a complete revolution of 360 degrees
     static const int NORMAL_MOTOR_SPEED = 200; // maximum possible value is 255
     static const int LINE_FOLLOWING_SPEED = 175; // for line following
     static const int TURN_DELAY = 100; // during line following, each turnLeft or turnRight command executes by this number of milliseconds
-    int LEFT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold
-    int RIGHT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold
-    static const int ADAPTIVE_THRESHOLD_OFFSET = 200; // for adaptive thresholding for line following, currently not used
+    int LEFT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold, will be overwritten by adaptive thresholding
+    int RIGHT_THRESHOLD = 700; // for line following, detector is on line if value is above the threshold, will be overwritten by adaptive thresholding
+    static const int ADAPTIVE_THRESHOLD_OFFSET = 200; // for adaptive thresholding for line following
     static const int X_CENTRE = 389; // hardcoded value of x coordinate of the end of the tunnel
     static const int Y_CENTRE = 340; // hardcoded value of y coordinate of the end of the tunnel
     static const int DISTANCE_OFFSET = 82; // robot should stop this number of pixels from the target
@@ -177,6 +179,7 @@ class Robot {
 
     int actionHistory[4] = {SENTINEL_VALUE, SENTINEL_VALUE, SENTINEL_VALUE, SENTINEL_VALUE}; // stores history of actions
 
+    /* Obtains target coordinates from the remote computer. */
     void obtainTargetCoordinates() {
       for (int i = 0; i < numCoordinates; i++) {
         int value = readPacket();
@@ -186,12 +189,14 @@ class Robot {
       }
     }
 
+    /* Obtains orientation of the robot from the remote computer once the robot has exited the tunnel. */
     void obtainRobotOrientation() {
       robotOrientation = readPacket();
       sendMessage(String("Obtained orientation: "));
       sendMessage(String(robotOrientation));
     }
 
+    /* Goes forward indefinitely.*/
     void goForward() {
       leftMotor->setSpeed(LINE_FOLLOWING_SPEED);
       rightMotor->setSpeed(LINE_FOLLOWING_SPEED);
@@ -199,6 +204,7 @@ class Robot {
       rightMotor->run(FORWARD);
     }
 
+    /* Moves backward for delayTime milliseconds. Used when dropping off robots. */
     void moveBackward(int delayTime) {
       leftMotor->setSpeed(LINE_FOLLOWING_SPEED);
       rightMotor->setSpeed(LINE_FOLLOWING_SPEED);
@@ -208,6 +214,7 @@ class Robot {
       stopMoving();
     }
 
+    /* Goes forward indefinitely, at a quicker speed. */
     void goForwardQuick() {
       leftMotor->setSpeed(NORMAL_MOTOR_SPEED);
       rightMotor->setSpeed(NORMAL_MOTOR_SPEED);
@@ -215,6 +222,7 @@ class Robot {
       rightMotor->run(FORWARD);
     }
 
+    /* Moves forward for a set amount of distance. */
     void moveForward(int distance) {
       // distance in pixels
       long delayTime = (long) MOVE_FORWARD_CALIBRATION_CONSTANT * (long) distance / 360L;
@@ -223,6 +231,9 @@ class Robot {
       stopMoving();
     }
 
+    /* Turns left by a single 'step'. Left wheel is set to rotate backwards at one third the speed
+     *  of the right wheel rotating forwards.
+     */
     void turnLeft() {
       leftMotor->setSpeed(LINE_FOLLOWING_SPEED / 3);
       leftMotor->run(BACKWARD);
@@ -231,6 +242,9 @@ class Robot {
       delay(TURN_DELAY);
     }
 
+    /* Turns right by a single 'step'. Right wheel is set to rotate backwards at one third the speed
+     *  of the left wheel rotating forwards.
+     */
     void turnRight() {
       leftMotor->setSpeed(LINE_FOLLOWING_SPEED);
       leftMotor->run(FORWARD);
@@ -239,6 +253,7 @@ class Robot {
       delay(TURN_DELAY);
     }
 
+    /* Same as turnLeft(), but left wheel does not rotate backwards. */
     void turnLeftSingle() {
       leftMotor->setSpeed(0);
       leftMotor->run(RELEASE);
@@ -247,6 +262,7 @@ class Robot {
       delay(TURN_DELAY);
     }
 
+    /* Same as turnRight(), but right wheel does not rotate backwards. */
     void turnRightSingle() {
       leftMotor->setSpeed(LINE_FOLLOWING_SPEED);
       leftMotor->run(FORWARD);
@@ -255,6 +271,9 @@ class Robot {
       delay(TURN_DELAY);
     }
 
+    /* Similar to turnLeft(), but both wheels rotate in the appropriate directions 
+     *  at the same speed and at a quicker speed.
+     */
     void turnLeftDouble() {
       leftMotor->setSpeed(NORMAL_MOTOR_SPEED);
       leftMotor->run(BACKWARD);
@@ -263,6 +282,9 @@ class Robot {
       delay(TURN_DELAY);
     }
 
+    /* Similar to turnRight(), but both wheels rotate in the appropriate directions
+     *  at the same speed and at a quicker speed.
+     */
     void turnRightDouble() {
       leftMotor->setSpeed(NORMAL_MOTOR_SPEED);
       leftMotor->run(FORWARD);
@@ -271,6 +293,7 @@ class Robot {
       delay(TURN_DELAY);
     }
     
+    /* Stops the robot. */
     void stopMoving() {
       leftMotor->setSpeed(0);
       leftMotor->run(RELEASE);
@@ -278,8 +301,8 @@ class Robot {
       rightMotor->run(RELEASE);
     }
 
+    /* Turns robot by a set angle. Positive angle is clockwise, negative is anticlockwise. */
     void turnByAngle(int angle) {
-      // turns robot by set angle, angle can be positive or negative
       sendMessage(String("Turning: "));
       sendMessage(String(angle));
       long delayTime = TURN_CALIBRATION_CONSTANT * (long) abs(angle) / 360L;
@@ -294,6 +317,9 @@ class Robot {
       }
     }
 
+    /* Returns true if left line detector is detecting high, i.e. on the line, and
+     *  false otherwise.
+     */
     bool leftDetectorOnLine() {
       if (!prevLeftSensor) {
         return analogRead(leftLineDetectorPin) > LEFT_THRESHOLD;
@@ -302,6 +328,9 @@ class Robot {
       }
     }
 
+    /* Returns true if right line detector is detecting high, i.e. on the line, and
+     *  false otherwise.
+     */
     bool rightDetectorOnLine() {
       if (!prevRightSensor) {
         return analogRead(rightLineDetectorPin) > RIGHT_THRESHOLD;
@@ -310,11 +339,17 @@ class Robot {
       }
     }
 
+    /* Sets the left line detector threshold to be ADAPTIVE_THRESHOLD_OFFSET higher
+     *  than the current read value.
+     */
     void adaptLeftLineThreshold() {
       int current = analogRead(leftLineDetectorPin);
       LEFT_THRESHOLD = current + ADAPTIVE_THRESHOLD_OFFSET;
     }
 
+    /* Sets the right line detector threshold to be ADAPTIVE_THRESHOLD_OFFSET higher
+     *  than the current read value.
+     */
     void adaptRightLineThreshold() {
       int current = analogRead(rightLineDetectorPin);
       RIGHT_THRESHOLD = current + ADAPTIVE_THRESHOLD_OFFSET;
@@ -330,6 +365,7 @@ class Robot {
       bool ignoreLeftDetector = false;
       bool ignoreRightDetector = false;
 
+      /* The robot will ignore numIgnores instances when both line detectors are on the line. */
       switch (state) {
         case START_TO_TUNNEL:
           numIgnores = 2;
@@ -348,6 +384,7 @@ class Robot {
       }
 
       if (state == START_TO_TUNNEL) {
+        // adapt line detector thresholds at the start
         adaptLeftLineThreshold();
         adaptRightLineThreshold();
       }
@@ -358,7 +395,8 @@ class Robot {
       goForward();
 
       /* The following while loop is meant to handle the junctions by ignoring a set number
-       *  of instances where both sensors return high.
+       *  of instances where both sensors return high (i.e. on the line). The robot will break
+       *  out of this while loop only when it has reached the end of the line following sequence.
        */
       while (counter <= numIgnores) {
         if (ignoreLeftDetector && leftDetectorOnLine()) {
@@ -372,21 +410,26 @@ class Robot {
           goForward();
           continue;
         }
-        
+
+        /* The robot will break out of this inner while loop when both detectors return
+         *  high (i.e. on the line). Note that different turning speeds are used depending
+         *  on which state the robot is in; this was determined experimentally.
+         */
         while (!leftDetectorOnLine() || !rightDetectorOnLine()) {
-          Serial.print(analogRead(leftLineDetectorPin));
-          Serial.print(" ");
-          Serial.print(analogRead(rightLineDetectorPin));
-          Serial.print(" ");
-          Serial.print(leftDetectorOnLine());
-          Serial.print(" ");
-          Serial.print(rightDetectorOnLine());
-          Serial.print(" ");
-          Serial.print(prevLeftSensor);
-          Serial.print(" ");
-          Serial.print(prevRightSensor);
-          Serial.print(" ");
-          Serial.println(counter);
+//          Printing for debugging purposes
+//          Serial.print(analogRead(leftLineDetectorPin));
+//          Serial.print(" ");
+//          Serial.print(analogRead(rightLineDetectorPin));
+//          Serial.print(" ");
+//          Serial.print(leftDetectorOnLine());
+//          Serial.print(" ");
+//          Serial.print(rightDetectorOnLine());
+//          Serial.print(" ");
+//          Serial.print(prevLeftSensor);
+//          Serial.print(" ");
+//          Serial.print(prevRightSensor);
+//          Serial.print(" ");
+//          Serial.println(counter);
 
           ignoreLeftDetector = false;
           ignoreRightDetector = false;
@@ -420,24 +463,26 @@ class Robot {
           prevRightSensor = false;
         }
 
-        Serial.print(analogRead(leftLineDetectorPin));
-        Serial.print(" ");
-        Serial.print(analogRead(rightLineDetectorPin));
-        Serial.print(" ");
-        Serial.print(leftDetectorOnLine());
-        Serial.print(" ");
-        Serial.print(rightDetectorOnLine());
-        Serial.print(" ");
-        Serial.print(prevLeftSensor);
-        Serial.print(" ");
-        Serial.print(prevRightSensor);
-        Serial.print(" ");
-        Serial.println(counter);
+//        Printing for debugging purposes
+//        Serial.print(analogRead(leftLineDetectorPin));
+//        Serial.print(" ");
+//        Serial.print(analogRead(rightLineDetectorPin));
+//        Serial.print(" ");
+//        Serial.print(leftDetectorOnLine());
+//        Serial.print(" ");
+//        Serial.print(rightDetectorOnLine());
+//        Serial.print(" ");
+//        Serial.print(prevLeftSensor);
+//        Serial.print(" ");
+//        Serial.print(prevRightSensor);
+//        Serial.print(" ");
+//        Serial.println(counter);
 
         if (!prevLeftSensor || !prevRightSensor) {
           prevLeftSensor = true;
           prevRightSensor = true;
           
+          // Ignore the appropriate sensors for better junction handling
           if (state == TUNNEL_TO_SERVICE) {
             ignoreLeftDetector = true;
           } else if (state == SERVICE_TO_TUNNEL) {
@@ -445,15 +490,19 @@ class Robot {
           }
 
           if (counterStep > 50) {
+            // Increment the ignore counter if a certain time interval has passed since the previous increment
             counter++;
             counterStep = 0;
             sendMessage(String(counter));
           }
-        }
-      }
+        } // inner while
+      } // outer while
       stopMoving(); // presumably reached the end
     }
 
+    /* Returns the angle that the robot needs to turn by in order to reach the target
+     *  located at pixel coordinates (x, y).
+     */
     int getTheta(int x, int y) {
       // Assume x, y are to the front of the tunnel
       int theta = atan2(Y_CENTRE - y, X_CENTRE - x) * 180 / PI;
@@ -461,6 +510,9 @@ class Robot {
       return theta;
     }
 
+    /* Returns the distance in pixels that the robot needs to move forward by in order
+     *  to reach the target located at pixel coordinates (x, y).
+     */
     int getDistance(int x, int y) {
       long distanceSquared = pow((long) X_CENTRE - x, 2) + pow((long) Y_CENTRE - y, 2);
       long distance = sqrt(distanceSquared);
@@ -471,6 +523,11 @@ class Robot {
       return max((int) distance - DISTANCE_OFFSET, 0);
     }
 
+    /* Moves AGV to pick up a target located in the dead zone. The robot will turn by
+     *  90 degrees twice. Note that the orientation of the AGV is taken into account
+     *  at the first turning, because the AGV may not be facing straight after it exits
+     *  the tunnel. Each action is stored into the actionHistory array.
+     */
     void moveRobotToDeadZone(int x, int y) {
       if (y > Y_CENTRE) {
         turnByAngle(-90 - robotOrientation);
@@ -496,6 +553,7 @@ class Robot {
       }
     }
 
+    /* Finds and moves towards target robot, and picks it up. */
     void findRobot() {
       Serial.println("Finding robot");
       int x = targetCoordinates[coordinateCounter];
@@ -507,17 +565,16 @@ class Robot {
       sendMessage(String(theta - robotOrientation));
 
       if (abs(theta) > THETA_THRESHOLD) {
+        // Target is considered to be in the dead zone if angle > THETA_THRESHOLD
         moveRobotToDeadZone(x, y);
       } else {
         int distance = getDistance(x, y);
         sendMessage(String(distance));
-        turnByAngle(theta - robotOrientation);
-        actionHistory[0] = theta;
+        turnByAngle(theta - robotOrientation); // compensate for possible skewness of AGV
+        actionHistory[0] = theta; // record action history
         moveForward(distance);
-        actionHistory[1] = distance;
+        actionHistory[1] = distance; // record action history
       }
-
-      /* Need to check whether it needs servicing or recharging */
       
       // Target should be in front of robot at this point
       openSweeper();
@@ -526,31 +583,36 @@ class Robot {
       delay(500);
     }
 
+    /* Opens the sweeper mechanism. */
     void openSweeper() {
       int pos;
-      for (pos = 90; pos >= 20; pos -= 1) { // goes from 0 degrees to 90 degrees
+      for (pos = 90; pos >= 20; pos -= 1) {
         // in steps of 1 degree
         servo.write(pos);
         delay(5);
       }
     }
 
+    /* Closes the sweeper mechanism. */
     void closeSweeper() {
       int pos;
-      for (pos = 20; pos <= 90; pos += 1) { // goes from 0 degrees to 90 degrees
+      for (pos = 20; pos <= 90; pos += 1) {
         // in steps of 1 degree
         servo.write(pos);
         delay(2);
       }
     }
 
+    /* Turns and sweeps target robot onto the AGV. */
     void collectRobot() {
-      turnByAngle(194);
+      turnByAngle(194); // 194 degrees was an observed value that works, should theoretically by 180 degrees
       closeSweeper();
     }
 
+    /* Returns to the tunnel after picking up a target robot. */
     void goBackToTunnel() {
       if (actionHistory[3] != SENTINEL_VALUE) {
+        // Target was in the dead zone and therefore we had two turns
         moveForward(actionHistory[3]);
         delay(200);
         turnByAngle(-1 * actionHistory[2]);
@@ -559,12 +621,13 @@ class Robot {
       delay(200);
       turnByAngle(-1 * actionHistory[0]);
       
-      // Reset
+      // Reset actionHistory
       for (int i = 0; i < 4; i++) {
         actionHistory[i] = SENTINEL_VALUE;
       }
     }
 
+    /* Drops off robot at the designated area. */
     void dropOffRobot() {
       turnByAngle(190);
       delay(200);
@@ -580,6 +643,7 @@ class Robot {
       delay(100);
     }
 
+    /* Goes to the finish area after dropping off the last robot. */
     void goToFinish() {
       turnByAngle(GO_TO_FINISH_ANGLE);
       moveForward(GO_TO_FINISH_DISTANCE);
@@ -587,6 +651,7 @@ class Robot {
     }
      
   public:
+    /* This function is called and executes the entire routine. */
     void start() {
       acknowledge();
       obtainTargetCoordinates();
@@ -610,6 +675,7 @@ class Robot {
         dropOffRobot();
 
         if ((i == (numCoordinates / 2) - 1) || (targetCoordinates[coordinateCounter] == 0)) {
+          // All available robots have been collected
           state = TUNNEL_TO_FINISH;
           goToFinish();
           return;
@@ -624,6 +690,7 @@ class Robot {
     }
 };
 
+// Define static variables
 const int Robot::MOVE_FORWARD_CALIBRATION_CONSTANT;
 const long Robot::TURN_CALIBRATION_CONSTANT;
 const int Robot::NORMAL_MOTOR_SPEED;
@@ -646,7 +713,7 @@ void setup() {
 }
 
 void loop() {
-  servo.write(90);
+  servo.write(90); // ensure the sweeper is closed at the start
   Robot(robot);
   robot.start();
   exit(0);

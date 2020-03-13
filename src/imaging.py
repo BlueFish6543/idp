@@ -6,9 +6,9 @@ import subprocess
 import cv2
 import numpy as np
 
-UDP_IP = "192.168.43.198"
-IP_ADDR = "192.168.43.170"
-UDP_PORT = 2390
+UDP_IP = "192.168.43.198"  # IP address of Arduino
+IP_ADDR = "192.168.43.170"  # IP address of this computer
+UDP_PORT = 2390  # UDP port for communication
 
 class Image:
     def __init__(self, src, threshold, num_colours, kernel_size, find_targets):
@@ -21,6 +21,9 @@ class Image:
         self.find_targets = find_targets
 
     def _draw_axis(self, p, q, colour, scale=0.2):
+        '''
+        Draws axes around objects for visualisation purposes.
+        '''
         angle = np.arctan2(p[1] - q[1], p[0] - q[0])
         angle_deg = angle * 180 / np.pi
 
@@ -47,6 +50,9 @@ class Image:
         cv2.line(self.img, (p[0], p[1]), (q[0], q[1]), colour, 1, cv2.LINE_AA)
 
     def _get_orientation(self, pts):
+        '''
+        Obtains the most likely orientation of an object bounded by a set of points.
+        '''
         # Construct a buffer used by the PCA analysis
         data_pts = np.squeeze(np.array(pts, dtype=np.float64))
 
@@ -72,6 +78,9 @@ class Image:
         return np.arctan2(eigenvectors[0, 1], eigenvectors[0, 0])  # orientation in radians
 
     def _color_quantize(self):
+        '''
+        Quantizes an image into self.num_colours colours.
+        '''
         shape = self.img.shape
         img = self.img.reshape((-1, 3))
         img = np.float32(img)
@@ -90,12 +99,17 @@ class Image:
         return res, intensities
 
     def draw_contours(self):
+        '''
+        Finds contours in an image and draws them in self.img.
+        '''
+        # Color quantization
         quantized, intensities = self._color_quantize()
 
         # Convert image to grayscale
         gray = cv2.cvtColor(quantized, cv2.COLOR_BGR2GRAY)
 
-        # Convert image to binary
+        # Apply binary thresholding. Threshold level is set by self.threshold.
+        # Lower self.threshold is more selective
         thresh = intensities[self.num_colours - self.threshold] - 2
         retval, bw = cv2.threshold(gray, thresh, 255, cv2.THRESH_BINARY)
 
@@ -103,7 +117,7 @@ class Image:
         kernel = np.ones((self.kernel_size, self.kernel_size), np.uint8)
         bw = cv2.dilate(bw, kernel, iterations=1)
 
-        # Apply mask
+        # Apply mask. Mask coordinates are hardcoded for the table
         if self.find_targets:
             mask = 255 * np.ones_like(bw)
             mask[:, :45] = 0
@@ -125,12 +139,13 @@ class Image:
         for i in range(len(contours)):
             x, y, w, h = cv2.boundingRect(contours[i])
             area = cv2.contourArea(contours[i])
-            print(area)
             # Ignore contours that are too small or too large
             if self.find_targets:
+                # Looking for target robots
                 if (w < 10) or (w > 100) or (h < 10) or (h > 100) or (area > 1000) or (area < 200):
                     continue
             else:
+                # Looking for the white rectangle mounted on the AGV
                 if (area > 850) or (area < 650):
                     continue
 
@@ -141,16 +156,27 @@ class Image:
             self._get_orientation(contours[i])
 
     def show(self):
+        '''
+        Shows the image with contours drawn on.
+        '''
         cv2.namedWindow("output", cv2.WINDOW_NORMAL)
         cv2.imshow("output", self.img)
         cv2.waitKey()
 
     def get_centres(self):
+        '''
+        Returns the coordinates of the centres of each found contour, wrapped
+        as a numpy array.
+        '''
         return np.array(self.centres)
 
 def send_centres(sock, centres):
+    '''
+    Sends centre coordinates to the Arduino.
+    '''
     for (i, coordinate) in enumerate(np.nditer(centres)):
         if (i == 8):
+            # Assume maximum of four sets of coordinates
             break
         # In the order x1, y1, x2, y2 etc.
         time.sleep(0.1)
@@ -159,6 +185,8 @@ def send_centres(sock, centres):
         sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
     
     if centres.size < 8:
+        # Make sure the Ardiuno always receives eight coordinates, even if
+        # OpenCV detected less than that. We send zeros as invalid coordinates
         n = 8 - centres.size
         for i in range(n):
             time.sleep(0.1)
@@ -167,12 +195,19 @@ def send_centres(sock, centres):
             sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
 
 def send_angle(sock, angle):
+    '''
+    Sends the angle (orientation of the AGV) to the Arduino.
+    '''
     time.sleep(0.1)
     message = str(angle)
     print(message)
     sock.sendto(message.encode(), (UDP_IP, UDP_PORT))
 
 def receive_data(sock):
+    '''
+    Receives data from the Arduino. Only breaks out of this when
+    b'Connection established' is received.
+    '''
     while True:
         data, addr = sock.recvfrom(1024)  # buffer size of 1024 bytes
         print(data)
@@ -180,25 +215,42 @@ def receive_data(sock):
             break
 
 def dist(x, y):
+    '''
+    Calculates distance of each target robot from the tunnel exit.
+    '''
     x_centre = 389
     y_centre = 340
     return np.sqrt((x - x_centre) ** 2 + (y - y_centre) ** 2)
 
 def sort_coordinates(centres):
+    '''
+    Sorts coordinates of target robots in increasing distance from the tunnel exit.
+    '''
     centres = list(centres)
     centres.sort(key=lambda centre: dist(centre[0], centre[1]))
     return np.asarray(centres)
 
 def take_photo():
+    '''
+    Takes a photo and saves it as `./images/test.jpg` using `ffmpeg`. Assumes that the webcam
+    is mounted at /dev/video4. This has been tested only on one computer running Ubuntu and will
+    probably need to be changed for different computers.
+    '''
     for i in range(3):
+        # Tries to take a photo until it successfully does so, for a maximum of three times
         p = subprocess.Popen(['ffmpeg', '-f', 'video4linux2', '-s', '960x720', '-i', '/dev/video4', '-ss', '0:0:1', '-frames', '1', './images/test.jpg', '-y'],
                              stdout=subprocess.PIPE)
-        result = wait_timeout(p, 8)
+        result = wait_timeout(p, 8)  # Kill after 8 seconds if photo taking failed
         if result:
+            # Successfully took a photo
             return
         p.kill()
 
 def wait_timeout(proc, seconds):
+    '''
+    Returns True if the process `proc` finished within `seconds` seconds, otherwise
+    returns False.
+    ''' 
     start = time.time()
     end = start + seconds
     interval = min(seconds / 1000.0, .25)
@@ -212,6 +264,9 @@ def wait_timeout(proc, seconds):
         time.sleep(interval)
 
 def process_image(threshold, num_colours, kernel_size, find_targets):
+    '''
+    Takes photo and does image processing. Returns the processed image object.
+    '''
     take_photo()
     src = cv2.imread(os.path.join(os.getcwd(), 'images', 'test.jpg'))
     assert src is not None
@@ -223,6 +278,7 @@ if __name__ == '__main__':
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((IP_ADDR, UDP_PORT))
     receive_data(sock)
+    # Find target robots
     image = process_image(threshold=2, num_colours=8, kernel_size=7, find_targets=True)
     centres = sort_coordinates(image.get_centres())
     print(centres)
@@ -230,14 +286,21 @@ if __name__ == '__main__':
     # image.show()
     
     for i in range(5):
+        # Loop runs for one more time than necessary in order to keep receiving data from the
+        # Arduino for debugging purposes. Thus the program needs to be killed with CTRL + C
+        # once the Arduino finishes executing the routine.
         receive_data(sock)
+        # Obtain orientation of the AGV once it has exited the tunnel
         image = process_image(threshold=1, num_colours=8, kernel_size=1, find_targets=False)
         print(image.angles)
         angles = np.asarray(image.angles)
         if list(angles):
+            # Pick the smallest angle as we know the robot will not deviate more than 10 degrees.
+            # `angles` will have minimally two angles at right angles to each other which are
+            # the principal components
             angle = int(round(angles[np.argmin(np.abs(angles))]))
             print(angle)
         else:
-            angle = 0
+            angle = 0  # default value if OpenCV failed to obtain orientation for any reason
         send_angle(sock, angle)
         # image.show()
